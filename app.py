@@ -1,47 +1,41 @@
 import streamlit as st
 import psycopg2
+import time
 from datetime import datetime
 
 # --- CONFIGURACIÓN ---
 st.set_page_config(page_title="Bar App", page_icon="🍺")
 
 def conectar_db():
-    # Usamos el formato DSN que es más estable en la nube
-    # Forzamos la IP directa para evitar fallos de nombre
+    # Usamos la IP directa y el formato más compatible
     DB_URI = "host=15.237.253.218 port=5432 dbname=postgres user=postgres password=Tinacasa1999. sslmode=require"
     
-    try:
-        # Aumentamos el tiempo de espera a 30 segundos
-        conn = psycopg2.connect(DB_URI, connect_timeout=30)
-        return conn
-    except Exception as e:
-        # Usamos st.error en lugar de messagebox
-        st.error(f"❌ Error de red: {e}")
-        return None
+    intentos = 0
+    while intentos < 3:
+        try:
+            # Intentamos conectar con un tiempo de espera muy amplio
+            conn = psycopg2.connect(DB_URI, connect_timeout=30)
+            return conn
+        except Exception as e:
+            intentos += 1
+            if intentos == 3:
+                st.error(f"❌ Agotados los 3 intentos de red: {e}")
+                return None
+            time.sleep(2) # Esperamos 2 segundos antes de reintentar
 
 st.title("🍺 Horario Desastre")
 
 user = st.selectbox("¿Quién eres?", ["Selecciona...", "Alex", "Janira", "Iria"])
 
 if user != "Selecciona...":
-    conn = conectar_db()
+    with st.spinner('Conectando con la base de datos...'):
+        conn = conectar_db()
     
     if conn:
         st.success(f"✅ ¡Conectado! Hola {user}")
-        # Solo si hay conexión, creamos el cursor
-        cur = conn.cursor()
-        
-        if user == "Alex":
-            st.subheader("Panel de Consulta")
-            st.info("Alex, aquí verás pronto el resumen de horas.")
-        else:
-            st.subheader(f"Panel de {user}")
-            if st.button("📝 Fichar ahora", use_container_width=True):
-                st.info("Registro de turno activado.")
-        
-        cur.close()
+        # Aquí cargaríamos el resto de la App
         conn.close()
     else:
-        st.warning("⚠️ No se pudo conectar. Por favor, pulsa el botón de abajo.")
-        if st.button("🔄 Reintentar"):
+        st.warning("⚠️ Supabase no responde. Por favor, revisa el paso de abajo.")
+        if st.button("🔄 Forzar Reintento"):
             st.rerun()
