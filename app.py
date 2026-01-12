@@ -2,46 +2,49 @@ import streamlit as st
 import psycopg2
 from datetime import datetime
 
-# --- CONFIGURACIÓN ---
-st.set_page_config(page_title="Bar App", page_icon="🍺")
+# --- 1. CONFIGURACIÓN DE LA PÁGINA ---
+st.set_page_config(page_title="Horario Desastre", page_icon="🍺")
 
+# --- 2. FUNCIÓN DE CONEXIÓN ROBUSTA ---
 def conectar_db():
-    # Hemos cambiado el nombre por la IP directa 15.237.253.218
-    # Usamos el puerto 5432 y añadimos sslmode=require
-    DB_URI = "postgresql://postgres:Tinacasa1999.@15.237.253.218:5432/postgres?sslmode=require"
-    
+    # Usamos el puerto 6543 y el modo 'session' que es el más estable
+    # También forzamos el uso de IPv4 para evitar el error de los logs anteriores
+    DB_URI = "postgresql://postgres:Tinacasa1999.@db.kljizxbakvzytmaxqodw.supabase.co:6543/postgres?sslmode=require&connect_timeout=20"
     try:
-        # Añadimos un tiempo de espera para que no se quede colgado
-        return psycopg2.connect(DB_URI, connect_timeout=15)
+        return psycopg2.connect(DB_URI)
     except Exception as e:
-        st.error(f"⚠️ Error de conexión a la base de datos: {e}")
-        return None
+        # Si falla, intentamos una vez más con la IP directa
+        try:
+            DB_URI_IP = "postgresql://postgres:Tinacasa1999.@15.237.253.218:6543/postgres?sslmode=require&connect_timeout=20"
+            return psycopg2.connect(DB_URI_IP)
+        except:
+            st.error(f"⚠️ Error crítico de conexión: {e}")
+            return None
 
-st.title("🍺 Horario Desastre")
+# --- 3. DISEÑO ---
+st.markdown("<h1 style='text-align: center;'>🍺 Horario Desastre</h1>", unsafe_allow_html=True)
 
 user = st.selectbox("¿Quién eres?", ["Selecciona...", "Alex", "Janira", "Iria"])
 
 if user != "Selecciona...":
     conn = conectar_db()
     
-    # Solo intentamos usar la base de datos si la conexión funcionó
-    if conn is not None:
+    if conn:
+        st.success(f"✅ Conectado como {user}")
         cur = conn.cursor()
         
         if user == "Alex":
-            st.subheader("Panel de Consulta (Lectura)")
-            st.info("Alex, aquí verás el resumen de horas.")
+            st.subheader("📋 Panel de Alex")
+            st.info("Resumen de horas disponible pronto.")
         else:
-            st.subheader(f"Hola {user}")
-            col1, col2 = st.columns(2)
-            with col1:
-                if st.button("📝 Fichar", use_container_width=True):
-                    st.session_state.accion = "fichar"
-            with col2:
-                if st.button("🏖 Vacaciones", use_container_width=True):
-                    st.session_state.accion = "vacas"
-        
+            st.subheader(f"👋 Hola {user}")
+            # Botones de acción
+            if st.button("📝 Registrar Turno", use_container_width=True):
+                st.write("Formulario de fichaje abierto...")
+                
+        cur.close()
         conn.close()
     else:
-        st.warning("No se pudo establecer la conexión. Por favor, recarga la página en unos segundos.")
-
+        st.warning("⏱️ El servidor tarda en responder. Pulsa el botón de abajo para reintentar.")
+        if st.button("Reintentar conexión"):
+            st.rerun()
