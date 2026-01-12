@@ -8,7 +8,7 @@ st.set_page_config(page_title="Bar App", page_icon="🍺")
 # --- CONEXIÓN DIRECTA A LA NUBE ---
 def conectar_db():
     # Esta dirección funcionará perfectamente desde los servidores de la App
-    DB_URI = "postgresql://postgres:Tinacasa1999.@db.kljizxbakvzytmaxqodw.supabase.co:5432/postgres"
+    DB_URI = "postgresql://postgres:Tinacasa1999.@db.kljizxbakvzytmaxqodw.supabase.co:6543/postgres"
     return psycopg2.connect(DB_URI)
 
 st.title("🍺 Horario Desastre")
@@ -33,4 +33,5 @@ if user != "Selecciona...":
             if st.button("🏖 Vacaciones", use_container_width=True):
                 st.session_state.accion = "vacas"
     
+
     conn.close()
