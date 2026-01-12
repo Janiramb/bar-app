@@ -7,7 +7,8 @@ st.set_page_config(page_title="Bar App", page_icon="🍺")
 
 def conectar_db():
     try:
-        # El secreto está en el 'user': debe llevar el ID después del punto
+        # ⚠️ EL SECRETO: El usuario DEBE ser postgres.kljizxbakvzytmaxqodw
+        # Esto le dice a Supabase exactamente a qué proyecto entrar
         conn = psycopg2.connect(
             host="aws-0-eu-central-1.pooler.supabase.com",
             port="6543",
@@ -32,7 +33,7 @@ if user != "Selecciona...":
     
     if conn:
         st.success(f"✅ ¡POR FIN! Conectado con éxito, {user}")
-        # Aquí ya podemos empezar a meter los botones de fichaje
+        # Aquí meteremos los botones de fichaje en cuanto salga el check verde
         conn.close()
     else:
-        st.warning("⚠️ Casi lo tenemos, pero el usuario no ha sido reconocido.")
+        st.warning("⚠️ Casi lo tenemos, pero el usuario no ha sido reconocido aún.")
