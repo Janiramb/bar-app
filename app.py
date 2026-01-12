@@ -2,20 +2,21 @@ import streamlit as st
 import psycopg2
 from datetime import datetime
 
-# --- CONFIGURACIÓN DE LA PÁGINA ---
-st.set_page_config(page_title="Horario Desastre", page_icon="🍺")
+# --- CONFIGURACIÓN ---
+st.set_page_config(page_title="Bar App", page_icon="🍺")
 
 def conectar_db():
-    # Usamos la IP directa para que tu PC no se pierda
-    # Asegúrate de que la contraseña Tinacasa1999. sea la correcta
+    # Usamos el formato DSN que es más estable en la nube
+    # Forzamos la IP directa para evitar fallos de nombre
     DB_URI = "host=15.237.253.218 port=5432 dbname=postgres user=postgres password=Tinacasa1999. sslmode=require"
     
     try:
-        # Aumentamos el tiempo de espera a 20 segundos
-        conn = psycopg2.connect(DB_URI, connect_timeout=20)
+        # Aumentamos el tiempo de espera a 30 segundos
+        conn = psycopg2.connect(DB_URI, connect_timeout=30)
         return conn
     except Exception as e:
-        messagebox.showerror("Error", f"No se pudo conectar: {e}")
+        # Usamos st.error en lugar de messagebox
+        st.error(f"❌ Error de red: {e}")
         return None
 
 st.title("🍺 Horario Desastre")
@@ -23,25 +24,24 @@ st.title("🍺 Horario Desastre")
 user = st.selectbox("¿Quién eres?", ["Selecciona...", "Alex", "Janira", "Iria"])
 
 if user != "Selecciona...":
-    # Intentamos conectar solo cuando se elige un usuario
     conn = conectar_db()
     
     if conn:
-        st.success(f"✅ ¡Conectado con éxito, {user}!")
+        st.success(f"✅ ¡Conectado! Hola {user}")
+        # Solo si hay conexión, creamos el cursor
         cur = conn.cursor()
         
-        # Aquí cargaremos tus botones en el siguiente paso
         if user == "Alex":
-            st.info("Modo consulta activado.")
+            st.subheader("Panel de Consulta")
+            st.info("Alex, aquí verás pronto el resumen de horas.")
         else:
-            st.write(f"### Panel de {user}")
-            if st.button("📝 Fichar ahora"):
-                st.write("Abriendo registro...")
+            st.subheader(f"Panel de {user}")
+            if st.button("📝 Fichar ahora", use_container_width=True):
+                st.info("Registro de turno activado.")
         
         cur.close()
         conn.close()
     else:
-        st.warning("⚠️ El servidor está tardando mucho. Pulsa el botón para reintentar.")
-        if st.button("🔄 Reintentar Conexión"):
+        st.warning("⚠️ No se pudo conectar. Por favor, pulsa el botón de abajo.")
+        if st.button("🔄 Reintentar"):
             st.rerun()
-
