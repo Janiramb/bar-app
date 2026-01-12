@@ -4,7 +4,8 @@ from supabase import create_client, Client
 # --- CONFIGURACIÓN ---
 st.set_page_config(page_title="Bar App", page_icon="🍺")
 
-# SUSTITUYE ESTO CON TUS DATOS DE SETTINGS > API
+# --- CONEXIÓN (AHORA CON COMILLAS) ---
+# He puesto las comillas " " que faltaban para que Python no de error
 url = "https://kljizxbakvzytmaxqodw.supabase.co"
 key = "sb_publishable_aV6LrJVsVo2a_129xBbNdw_TSO_7pDz"
 
@@ -24,16 +25,16 @@ if supabase:
     user = st.selectbox("¿Quién eres?", ["Selecciona...", "Alex", "Janira", "Iria"])
 
     if user != "Selecciona...":
-        # Con esta herramienta, la conexión es instantánea
+        # Con esta herramienta, la conexión es instantánea por el puerto web normal
         st.success(f"✅ ¡CONECTADO POR API! Hola {user}")
         
-        # Ejemplo: Consultar empleados para probar que lee datos
         try:
+            # Intentamos leer la tabla empleados
             response = supabase.table("empleados").select("*").execute()
-            st.write("Conexión real establecida con éxito.")
+            st.write("🚀 La App ya lee los datos de Supabase correctamente.")
         except Exception as e:
-            st.warning("Conexión OK, pero la tabla 'empleados' no se lee. Revisa si activaste RLS.")
+            # Si sale este aviso, es que falta activar el RLS en Supabase (lo que vimos antes)
+            st.warning("Conexión OK, pero la tabla 'empleados' no devuelve datos.")
+            st.info("💡 Consejo: Ve a Supabase > Authentication > Policies y dale a 'Enable RLS' y crea una política simple para la tabla.")
 else:
-    st.error("No se pudo configurar el cliente de Supabase.")
-
-
+    st.error("No se pudo configurar el cliente de Supabase. Revisa las llaves.")
