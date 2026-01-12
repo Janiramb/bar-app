@@ -12,147 +12,140 @@ url = "https://kljizxbakvzytmaxqodw.supabase.co"
 key = "sb_publishable_aV6LrJVsVo2a_129xBbNdw_TSO_7pDz"
 supabase = create_client(url, key)
 
-# --- COLORES ORIGINALES ---
-COLORS = {
-    "fondo": "#D5F5E3", "alex_bg": "#F2D7D5", "jani_bg": "#FEF9E7", "iria_bg": "#F4ECF7",
-    "jani_btn": "#F9E79F", "iria_btn": "#D7BDE2", "alex_btn": "#E6B0AA",
-    "txt_alex": "#C0392B", "txt_jani": "#D4AC0D", "txt_iria": "#8E44AD"
-}
+# --- COLORES ---
+COLOR_FONDO = "#D5F5E3"
+COLOR_ALEX = "#E6B0AA"
+COLOR_JANI = "#F9E79F"
+COLOR_IRIA = "#D7BDE2"
 
-# --- ESTILOS (Arreglado el color del texto) ---
-def aplicar_estilos(bg_color):
-    st.markdown(f"""
-        <style>
-        .stApp {{ background-color: {bg_color}; }}
-        .stButton>button {{
-            color: black !important;
-            font-weight: bold !important;
-            border: 2px solid #555 !important;
-            border-radius: 10px;
-            height: 60px;
-        }}
-        .dia-caja {{
-            border: 1px solid #ccc; padding: 10px; border-radius: 8px;
-            text-align: center; min-height: 100px; background-color: white; color: black;
-        }}
-        .resumen {{
-            background-color: white; padding: 15px; border-radius: 10px;
-            border: 2px solid #2C3E50; text-align: center; font-weight: bold; color: black;
-        }}
-        </style>
+# --- ESTILOS CSS LIMPIOS ---
+st.markdown(f"""
+    <style>
+    .stApp {{ background-color: {COLOR_FONDO}; }}
+    .stButton>button {{
+        color: black !important;
+        background-color: white;
+        border: 2px solid #555 !important;
+        font-weight: bold !important;
+        height: 60px;
+    }}
+    .dia-caja {{
+        border: 1px solid #ccc;
+        padding: 10px;
+        border-radius: 8px;
+        text-align: center;
+        min-height: 80px;
+        background-color: white;
+        color: black;
+    }}
+    </style>
     """, unsafe_allow_html=True)
 
-# --- LÓGICA DE NAVEGACIÓN ---
+# --- NAVEGACIÓN ---
 if 'page' not in st.session_state: st.session_state.page = 'inicio'
 
-# --- PANTALLA INICIO ---
+# --- PANTALLA 1: INICIO ---
 if st.session_state.page == 'inicio':
-    aplicar_estilos(COLORS["fondo"])
-    st.markdown("<h1 style='text-align:center; color:#555;'>🍺 HORARIO DESASTRE 🍺</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align:center; color:#333;'>🍺 HORARIO DESASTRE 🍺</h1>", unsafe_allow_html=True)
     
-    col1, col2, col3 = st.columns([1, 1.5, 1])
+    col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         st.write("##")
-        if st.button("ALEX (Jefe)", use_container_width=True): 
+        if st.button("🧔 ALEX (Jefe)", use_container_width=True):
             st.session_state.page = 'menu_alex'; st.rerun()
         
-        st.markdown(f'<style>div[row-id="j"] button {{background-color: {COLORS["jani_btn"]} !important;}}</style>', unsafe_allow_html=True)
-        if st.button("JANIRA", key="j", use_container_width=True):
+        st.write("")
+        if st.button("👩‍🦰 JANIRA", use_container_width=True):
             st.session_state.page = 'calendario'; st.session_state.user = 'Janira'; st.session_state.emp_id = 2; st.rerun()
         
-        st.markdown(f'<style>div[row-id="i"] button {{background-color: {COLORS["iria_btn"]} !important;}}</style>', unsafe_allow_html=True)
-        if st.button("IRIA", key="i", use_container_width=True):
+        st.write("")
+        if st.button("👩‍🦳 IRIA", use_container_width=True):
             st.session_state.page = 'calendario'; st.session_state.user = 'Iria'; st.session_state.emp_id = 3; st.rerun()
 
-# --- PANTALLA MENU ALEX ---
+# --- PANTALLA 2: MENU ALEX ---
 elif st.session_state.page == 'menu_alex':
-    aplicar_estilos(COLORS["alex_bg"])
-    if st.button("◀ VOLVER"): st.session_state.page = 'inicio'; st.rerun()
-    st.markdown(f"<h1 style='text-align:center; color:{COLORS['txt_alex']};'>PANEL DE CONTROL (ALEX)</h1>", unsafe_allow_html=True)
+    st.markdown("<style>.stApp { background-color: #F2D7D5; }</style>", unsafe_allow_html=True)
+    if st.button("◀ VOLVER AL INICIO"): st.session_state.page = 'inicio'; st.rerun()
     
-    tab1, tab2 = st.tabs(["Consultar Horarios", "⚙️ Configurar Contratos/Días"])
+    st.title("Panel de Control - Alex")
+    
+    tab1, tab2 = st.tabs(["📊 Consultar Horarios", "⚙️ Configurar Días Especiales"])
     
     with tab1:
-        st.write("### Ver Fichajes de:")
-        c1, c2 = st.columns(2)
-        if c1.button("HORARIO JANIRA", use_container_width=True):
+        st.write("Selecciona a quién quieres consultar:")
+        if st.button("Consultar a JANIRA"):
             st.session_state.page = 'calendario'; st.session_state.user = 'Alex'; st.session_state.ver_id = 2; st.rerun()
-        if c2.button("HORARIO IRIA", use_container_width=True):
+        if st.button("Consultar a IRIA"):
             st.session_state.page = 'calendario'; st.session_state.user = 'Alex'; st.session_state.ver_id = 3; st.rerun()
-
+            
     with tab2:
-        st.write("### Añadir Día Especial / Contrato")
-        with st.form("config_alex"):
-            emp = st.selectbox("Empleado", [2, 3], format_func=lambda x: "Janira" if x==2 else "Iria")
-            fecha_esp = st.date_input("Fecha")
-            horas_c = st.number_input("Horas Contrato para ese día", value=5.0)
-            motivo = st.text_input("Motivo (Ej: Navidad, Refuerzo)")
-            if st.form_submit_button("Añadir Día Especial"):
-                supabase.table("dias_especiales").insert({"empleado_id": emp, "fecha": str(fecha_esp), "horas_contrato": horas_c, "motivo": motivo}).execute()
-                st.success("Configuración guardada")
+        st.write("Añadir horas de contrato o días especiales:")
+        with st.form("form_especial"):
+            e_id = st.selectbox("Empleado", [2, 3], format_func=lambda x: "Janira" if x==2 else "Iria")
+            f_esp = st.date_input("Fecha")
+            h_esp = st.number_input("Horas Contrato", value=5.0)
+            if st.form_submit_button("Guardar Configuración"):
+                supabase.table("dias_especiales").insert({"empleado_id": e_id, "fecha": str(f_esp), "horas_contrato": h_esp}).execute()
+                st.success("Día configurado con éxito")
 
-# --- PANTALLA CALENDARIO ---
+# --- PANTALLA 3: CALENDARIO ---
 elif st.session_state.page == 'calendario':
-    es_alex = (st.session_state.user == 'Alex')
-    emp_id = st.session_state.ver_id if es_alex else st.session_state.emp_id
-    nombre_emp = "Janira" if emp_id == 2 else "Iria"
-    bg = COLORS["alex_bg"] if es_alex else (COLORS["jani_bg"] if emp_id == 2 else COLORS["iria_bg"])
+    user_es_alex = (st.session_state.user == 'Alex')
+    id_trabajador = st.session_state.ver_id if user_es_alex else st.session_state.emp_id
+    nombre_visto = "Janira" if id_trabajador == 2 else "Iria"
     
-    aplicar_estilos(bg)
-    if st.button("◀ VOLVER"): 
-        st.session_state.page = 'menu_alex' if es_alex else 'inicio'; st.rerun()
+    if st.button("◀ VOLVER"):
+        st.session_state.page = 'menu_alex' if user_es_alex else 'inicio'; st.rerun()
+    
+    st.title(f"Calendario de {nombre_visto}")
+    if user_es_alex: st.warning("Modo Lectura: Solo Alex puede ver, no modificar.")
 
-    st.markdown(f"<h1 style='text-align:center;'>Calendario de {nombre_emp}</h1>", unsafe_allow_html=True)
-    
-    # Cargar Fichajes y Días Especiales
-    res_f = supabase.table("fichajes").select("*").eq("empleado_id", emp_id).execute()
-    f_df = pd.DataFrame(res_f.data) if res_f.data else pd.DataFrame()
-    
-    res_e = supabase.table("dias_especiales").select("*").eq("empleado_id", emp_id).execute()
-    e_df = pd.DataFrame(res_e.data) if res_e.data else pd.DataFrame()
+    # Cargar Fichajes
+    res = supabase.table("fichajes").select("*").eq("empleado_id", id_trabajador).execute()
+    df_f = pd.DataFrame(res.data) if res.data else pd.DataFrame()
 
     hoy = datetime.now()
     cal = calendar.monthcalendar(hoy.year, hoy.month)
     
-    cols_h = st.columns(7)
-    for i, d in enumerate(["LUN", "MAR", "MIE", "JUE", "VIE", "SAB", "DOM"]): cols_h[i].write(f"**{d}**")
-
+    # Grid de Calendario
     for semana in cal:
         cols = st.columns(7)
         for i, dia in enumerate(semana):
             if dia == 0: continue
-            f_str = f"{hoy.year}-{hoy.month:02d}-{dia:02d}"
+            fecha_s = f"{hoy.year}-{hoy.month:02d}-{dia:02d}"
             
-            # Buscar info
-            fichaje = f_df[f_df['fecha_dia'] == f_str].iloc[0] if not f_df.empty and not f_df[f_df['fecha_dia'] == f_str].empty else None
-            especial = e_df[e_df['fecha'] == f_str].iloc[0] if not e_df.empty and not e_df[e_df['fecha'] == f_str].empty else None
+            # Buscar si hay fichaje
+            f = None
+            if not df_f.empty:
+                m = df_f[df_f['fecha_dia'] == fecha_s]
+                if not m.empty: f = m.iloc[0]
             
             with cols[i]:
-                color_celda = "white"
-                info = f"<b>{dia}</b>"
-                if especial is not None: info += " ★"; color_celda = "#FFF9C4"
-                if fichaje is not None:
-                    info += f"<br><small>{fichaje['hora_entrada']}-{fichaje['hora_salida']}</small>"
-                    color_celda = "#ABEBC6" if fichaje['horas_extras'] == 0 else "#FADBD8"
+                color = "white"
+                txt = f"<b>{dia}</b>"
+                if f is not None:
+                    color = "#ABEBC6" if f['tipo'] == 'trabajo' else "#AED6F1"
+                    txt += f"<br><small>{f['hora_entrada']}-{f['hora_salida']}</small>"
                 
-                st.markdown(f"<div class='dia-caja' style='background-color:{color_celda};'>{info}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='dia-caja' style='background-color:{color};'>{txt}</div>", unsafe_allow_html=True)
                 
-                # SOLO Janira o Iria ven el botón de editar
-                if not es_alex:
-                    if st.button("📝", key=f"ed_{dia}"):
-                        st.session_state.edit_fichaje = f_str
+                # SOLO Janira/Iria ven el botón de editar
+                if not user_es_alex:
+                    if st.button("📝", key=f"btn_{dia}"):
+                        st.session_state.fichar_dia = fecha_s
                         st.rerun()
 
-    # FORMULARIO PARA FICHAR (Solo para ellas)
-    if 'edit_fichaje' in st.session_state and not es_alex:
-        with st.expander(f"Fichar día {st.session_state.edit_fichaje}", expanded=True):
-            c1, c2 = st.columns(2)
-            h_in = c1.text_input("Entrada (HH:MM)", "22:00")
-            h_out = c2.text_input("Salida (HH:MM)", "03:00")
-            tipo = st.selectbox("Tipo", ["trabajo", "vacaciones"])
-            if st.button("Guardar Fichaje"):
-                supabase.table("fichajes").insert({"empleado_id": emp_id, "fecha_dia": st.session_state.edit_fichaje, "hora_entrada": h_in, "hora_salida": h_out, "horas_normales": 5.0, "horas_extras": 0.0, "tipo": tipo}).execute()
-                del st.session_state.edit_fichaje; st.rerun()
-            if st.button("🗑️ ELIMINAR"):
-                supabase.table("fichajes").delete().eq("empleado_id", emp_id).eq("fecha_dia", st.session_state.edit_fichaje).execute()
-                del st.session_state.edit_fichaje; st.rerun()
+    # Formulario de Fichaje (Solo para ellas)
+    if 'fichar_dia' in st.session_state and not user_es_alex:
+        with st.expander(f"Fichar día {st.session_state.fichar_dia}", expanded=True):
+            h_i = st.text_input("Entrada", "22:00")
+            h_o = st.text_input("Salida", "03:00")
+            if st.button("Guardar Turno"):
+                supabase.table("fichajes").insert({
+                    "empleado_id": id_trabajador, "fecha_dia": st.session_state.fichar_dia,
+                    "hora_entrada": h_i, "hora_salida": h_o, "horas_normales": 5.0, "horas_extras": 0.0, "tipo": "trabajo"
+                }).execute()
+                del st.session_state.fichar_dia; st.rerun()
+            if st.button("🗑️ Eliminar"):
+                supabase.table("fichajes").delete().eq("empleado_id", id_trabajador).eq("fecha_dia", st.session_state.fichar_dia).execute()
+                del st.session_state.fichar_dia; st.rerun()
