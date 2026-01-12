@@ -4,22 +4,7 @@ from datetime import datetime, timedelta
 import calendar
 import pandas as pd
 
-# --- CONSTANTES DE COLOR ORIGINALES ---
-COLOR_FONDO_GENERAL = "#D5F5E3" 
-COLOR_ALEX_BG = "#F2D7D5"      
-COLOR_JANI_BG = "#FEF9E7"      
-COLOR_IRIA_BG = "#F4ECF7"      
-COLOR_VACACIONES_BG = "#A2D9CE"
-COLOR_FALTA_BG = "#F1948A"
-COLOR_ALEX_TXT = "#C0392B"
-COLOR_JANI_TXT = "#D4AC0D"
-COLOR_IRIA_TXT = "#8E44AD"
-COLOR_BTN_JANI = "#F9E79F"
-COLOR_BTN_IRIA = "#D7BDE2"
-COLOR_BTN_ALEX = "#E6B0AA"
-COLOR_BTN_GUARDAR = "#ABEBC6"
-COLOR_BTN_VACACIONES = "#76D7C4"
-
+# --- CONFIGURACIÓN ---
 st.set_page_config(page_title="Horario Desastre", page_icon="🍺", layout="wide")
 
 # --- CONEXIÓN ---
@@ -27,180 +12,147 @@ url = "https://kljizxbakvzytmaxqodw.supabase.co"
 key = "sb_publishable_aV6LrJVsVo2a_129xBbNdw_TSO_7pDz"
 supabase = create_client(url, key)
 
-# --- ESTILOS CSS PARA REPLICAR CUSTOMTKINTER ---
-def cargar_estilos(bg):
+# --- COLORES ORIGINALES ---
+COLORS = {
+    "fondo": "#D5F5E3", "alex_bg": "#F2D7D5", "jani_bg": "#FEF9E7", "iria_bg": "#F4ECF7",
+    "jani_btn": "#F9E79F", "iria_btn": "#D7BDE2", "alex_btn": "#E6B0AA",
+    "txt_alex": "#C0392B", "txt_jani": "#D4AC0D", "txt_iria": "#8E44AD"
+}
+
+# --- ESTILOS (Arreglado el color del texto) ---
+def aplicar_estilos(bg_color):
     st.markdown(f"""
         <style>
-        .stApp {{ background-color: {bg}; }}
-        /* Botones de Inicio */
+        .stApp {{ background-color: {bg_color}; }}
         .stButton>button {{
-            border-radius: 5px;
-            font-size: 20px !important;
-            height: 70px;
-            border: 2px solid #555;
-            color: black;
+            color: black !important;
+            font-weight: bold !important;
+            border: 2px solid #555 !important;
+            border-radius: 10px;
+            height: 60px;
         }}
-        /* Cajas de Calendario */
-        .dia-container {{
-            border: 1px solid #eee;
-            background-color: #F9F9F9;
-            padding: 8px;
-            border-radius: 6px;
-            min-height: 110px;
-            text-align: center;
-            font-family: 'Arial';
+        .dia-caja {{
+            border: 1px solid #ccc; padding: 10px; border-radius: 8px;
+            text-align: center; min-height: 100px; background-color: white; color: black;
         }}
-        .resumen-footer {{
-            background-color: white;
-            padding: 15px;
-            border-radius: 5px;
-            border: 1px solid #2C3E50;
-            font-size: 16px;
-            text-align: center;
-            font-weight: bold;
-            color: #2C3E50;
+        .resumen {{
+            background-color: white; padding: 15px; border-radius: 10px;
+            border: 2px solid #2C3E50; text-align: center; font-weight: bold; color: black;
         }}
         </style>
     """, unsafe_allow_html=True)
 
-# --- LÓGICA DE CÁLCULO ORIGINAL ---
-def calcular_duracion_turno(h_inicio, h_fin):
-    if h_inicio == "00:00" and h_fin == "00:00": return 0.0
-    fmt = "%H:%M"
-    t1 = datetime.strptime(h_inicio, fmt)
-    t2 = datetime.strptime(h_fin, fmt)
-    if t2 < t1: t2 += timedelta(days=1)
-    return round((t2 - t1).total_seconds() / 3600, 2)
-
-# --- NAVEGACIÓN ---
+# --- LÓGICA DE NAVEGACIÓN ---
 if 'page' not in st.session_state: st.session_state.page = 'inicio'
 
 # --- PANTALLA INICIO ---
 if st.session_state.page == 'inicio':
-    cargar_estilos(COLOR_FONDO_GENERAL)
-    st.markdown("<h1 style='text-align: center; font-size: 60px; font-weight: bold; color: #555;'>🍺 HORARIO DESASTRE 🍺</h1>", unsafe_allow_html=True)
-    st.write("##")
+    aplicar_estilos(COLORS["fondo"])
+    st.markdown("<h1 style='text-align:center; color:#555;'>🍺 HORARIO DESASTRE 🍺</h1>", unsafe_allow_html=True)
     
-    col_c, col_b, col_a = st.columns([1, 1.5, 1])
-    with col_b:
-        if st.button("ALEX", use_container_width=True): 
-            st.session_state.page = 'menu_alex'; st.rerun()
-        st.write("")
-        # Botón Janira con su color
-        st.markdown(f'<style>div[row-id="jani_btn"] button {{background-color: {COLOR_BTN_JANI} !important;}}</style>', unsafe_allow_html=True)
-        if st.button("JANIRA", key="jani_btn", use_container_width=True):
-            st.session_state.page = 'calendario'; st.session_state.emp_id = 2; st.rerun()
-        st.write("")
-        # Botón Iria con su color
-        st.markdown(f'<style>div[row-id="iria_btn"] button {{background-color: {COLOR_BTN_IRIA} !important;}}</style>', unsafe_allow_html=True)
-        if st.button("IRIA", key="iria_btn", use_container_width=True):
-            st.session_state.page = 'calendario'; st.session_state.emp_id = 3; st.rerun()
+    col1, col2, col3 = st.columns([1, 1.5, 1])
+    with col2:
         st.write("##")
-        if st.button("❌ CERRAR APP", type="primary", use_container_width=True): st.stop()
+        if st.button("ALEX (Jefe)", use_container_width=True): 
+            st.session_state.page = 'menu_alex'; st.rerun()
+        
+        st.markdown(f'<style>div[row-id="j"] button {{background-color: {COLORS["jani_btn"]} !important;}}</style>', unsafe_allow_html=True)
+        if st.button("JANIRA", key="j", use_container_width=True):
+            st.session_state.page = 'calendario'; st.session_state.user = 'Janira'; st.session_state.emp_id = 2; st.rerun()
+        
+        st.markdown(f'<style>div[row-id="i"] button {{background-color: {COLORS["iria_btn"]} !important;}}</style>', unsafe_allow_html=True)
+        if st.button("IRIA", key="i", use_container_width=True):
+            st.session_state.page = 'calendario'; st.session_state.user = 'Iria'; st.session_state.emp_id = 3; st.rerun()
 
 # --- PANTALLA MENU ALEX ---
 elif st.session_state.page == 'menu_alex':
-    cargar_estilos(COLOR_ALEX_BG)
+    aplicar_estilos(COLORS["alex_bg"])
     if st.button("◀ VOLVER"): st.session_state.page = 'inicio'; st.rerun()
-    st.markdown(f"<h1 style='text-align: center; color: {COLOR_ALEX_TXT}; font-weight: bold;'>PANEL DE CONSULTA</h1>", unsafe_allow_html=True)
-    st.write("##")
-    col1, col2, col3 = st.columns([1,1.5,1])
-    with col2:
-        if st.button("HORARIO JANIRA", use_container_width=True): 
-            st.session_state.page = 'calendario'; st.session_state.emp_id = 2; st.rerun()
-        st.write("")
-        if st.button("HORARIO IRIA", use_container_width=True): 
-            st.session_state.page = 'calendario'; st.session_state.emp_id = 3; st.rerun()
+    st.markdown(f"<h1 style='text-align:center; color:{COLORS['txt_alex']};'>PANEL DE CONTROL (ALEX)</h1>", unsafe_allow_html=True)
+    
+    tab1, tab2 = st.tabs(["Consultar Horarios", "⚙️ Configurar Contratos/Días"])
+    
+    with tab1:
+        st.write("### Ver Fichajes de:")
+        c1, c2 = st.columns(2)
+        if c1.button("HORARIO JANIRA", use_container_width=True):
+            st.session_state.page = 'calendario'; st.session_state.user = 'Alex'; st.session_state.ver_id = 2; st.rerun()
+        if c2.button("HORARIO IRIA", use_container_width=True):
+            st.session_state.page = 'calendario'; st.session_state.user = 'Alex'; st.session_state.ver_id = 3; st.rerun()
 
-# --- PANTALLA CALENDARIO (Réplica de CustomTkinter) ---
+    with tab2:
+        st.write("### Añadir Día Especial / Contrato")
+        with st.form("config_alex"):
+            emp = st.selectbox("Empleado", [2, 3], format_func=lambda x: "Janira" if x==2 else "Iria")
+            fecha_esp = st.date_input("Fecha")
+            horas_c = st.number_input("Horas Contrato para ese día", value=5.0)
+            motivo = st.text_input("Motivo (Ej: Navidad, Refuerzo)")
+            if st.form_submit_button("Añadir Día Especial"):
+                supabase.table("dias_especiales").insert({"empleado_id": emp, "fecha": str(fecha_esp), "horas_contrato": horas_c, "motivo": motivo}).execute()
+                st.success("Configuración guardada")
+
+# --- PANTALLA CALENDARIO ---
 elif st.session_state.page == 'calendario':
-    emp_id = st.session_state.emp_id
-    nombre = "Janira" if emp_id == 2 else "Iria"
-    bg = COLOR_JANI_BG if emp_id == 2 else COLOR_IRIA_BG
-    txt_c = COLOR_JANI_TXT if emp_id == 2 else COLOR_IRIA_TXT
-    cargar_estilos(bg)
+    es_alex = (st.session_state.user == 'Alex')
+    emp_id = st.session_state.ver_id if es_alex else st.session_state.emp_id
+    nombre_emp = "Janira" if emp_id == 2 else "Iria"
+    bg = COLORS["alex_bg"] if es_alex else (COLORS["jani_bg"] if emp_id == 2 else COLORS["iria_bg"])
     
-    col_v, col_m, col_n = st.columns([1, 4, 1])
-    with col_v:
-        if st.button("◀ VOLVER"): 
-            st.session_state.page = 'inicio'; st.rerun()
-    
-    # Simulación de Navegación de Mes
-    mes_actual = datetime.now().month
-    anio_actual = datetime.now().year
-    st.markdown(f"<h1 style='text-align: center; color: {txt_c}; font-weight: bold;'>HOLA {nombre.upper()}</h1>", unsafe_allow_html=True)
-    st.markdown(f"<h3 style='text-align: center;'>{calendar.month_name[mes_actual].upper()} {anio_actual}</h3>", unsafe_allow_html=True)
+    aplicar_estilos(bg)
+    if st.button("◀ VOLVER"): 
+        st.session_state.page = 'menu_alex' if es_alex else 'inicio'; st.rerun()
 
-    # Dibujar Grid
+    st.markdown(f"<h1 style='text-align:center;'>Calendario de {nombre_emp}</h1>", unsafe_allow_html=True)
+    
+    # Cargar Fichajes y Días Especiales
+    res_f = supabase.table("fichajes").select("*").eq("empleado_id", emp_id).execute()
+    f_df = pd.DataFrame(res_f.data) if res_f.data else pd.DataFrame()
+    
+    res_e = supabase.table("dias_especiales").select("*").eq("empleado_id", emp_id).execute()
+    e_df = pd.DataFrame(res_e.data) if res_e.data else pd.DataFrame()
+
+    hoy = datetime.now()
+    cal = calendar.monthcalendar(hoy.year, hoy.month)
+    
     cols_h = st.columns(7)
-    for i, d in enumerate(["LUN", "MAR", "MIE", "JUE", "VIE", "SAB", "DOM"]):
-        cols_h[i].markdown(f"<p style='text-align:center; color:#999; font-weight:bold;'>{d}</p>", unsafe_allow_html=True)
-
-    # Cargar datos
-    res = supabase.table("fichajes").select("*").eq("empleado_id", emp_id).execute()
-    fichajes_df = pd.DataFrame(res.data) if res.data else pd.DataFrame()
-    
-    cal = calendar.monthcalendar(anio_actual, mes_actual)
-    total_n, total_e, total_d = 0, 0, 0
+    for i, d in enumerate(["LUN", "MAR", "MIE", "JUE", "VIE", "SAB", "DOM"]): cols_h[i].write(f"**{d}**")
 
     for semana in cal:
         cols = st.columns(7)
         for i, dia in enumerate(semana):
             if dia == 0: continue
-            fecha_str = f"{anio_actual}-{mes_actual:02d}-{dia:02d}"
+            f_str = f"{hoy.year}-{hoy.month:02d}-{dia:02d}"
             
-            # Buscar fichaje
-            f = fichajes_df[fichajes_df['fecha_dia'] == fecha_str].iloc[0] if not fichajes_df.empty and not fichajes_df[fichajes_df['fecha_dia'] == fecha_str].empty else None
+            # Buscar info
+            fichaje = f_df[f_df['fecha_dia'] == f_str].iloc[0] if not f_df.empty and not f_df[f_df['fecha_dia'] == f_str].empty else None
+            especial = e_df[e_df['fecha'] == f_str].iloc[0] if not e_df.empty and not e_df[e_df['fecha'] == f_str].empty else None
             
             with cols[i]:
-                bg_dia = "#F9F9F9"
-                texto_dia = f"<b>{dia}</b>"
-                h_cont = 5.0 # Contrato base
+                color_celda = "white"
+                info = f"<b>{dia}</b>"
+                if especial is not None: info += " ★"; color_celda = "#FFF9C4"
+                if fichaje is not None:
+                    info += f"<br><small>{fichaje['hora_entrada']}-{fichaje['hora_salida']}</small>"
+                    color_celda = "#ABEBC6" if fichaje['horas_extras'] == 0 else "#FADBD8"
                 
-                if f is not None:
-                    n, e = f['horas_normales'], f['horas_extras']
-                    deuda = round(h_cont - (n + e), 2) if (n+e) < h_cont else 0
-                    total_n += n; total_e += e; total_d += deuda
-                    
-                    if f['tipo'] == 'vacaciones':
-                        bg_dia = COLOR_VACACIONES_BG
-                        texto_dia += f"<br><span style='color:{COLOR_VACACIONES_TXT}; font-weight:bold;'>☀️ VACS</span>"
-                    else:
-                        bg_dia = "#ABEBC6" if deuda == 0 else "#EDBB99"
-                        texto_dia += f"<br><small>{f['hora_entrada']}-{f['hora_salida']}</small><br><small>{n}h N / {e}h E</small>"
-                        if deuda > 0: texto_dia += f"<br><b style='color:red; font-size:10px;'>DEUDA {deuda}h</b>"
+                st.markdown(f"<div class='dia-caja' style='background-color:{color_celda};'>{info}</div>", unsafe_allow_html=True)
+                
+                # SOLO Janira o Iria ven el botón de editar
+                if not es_alex:
+                    if st.button("📝", key=f"ed_{dia}"):
+                        st.session_state.edit_fichaje = f_str
+                        st.rerun()
 
-                st.markdown(f"<div class='dia-container' style='background-color:{bg_dia};'>{texto_dia}</div>", unsafe_allow_html=True)
-                if st.button("📝", key=f"edit_{dia}"):
-                    st.session_state.edit_dia = (dia, fecha_str)
-                    st.rerun()
-
-    # --- POPUP GESTIÓN ---
-    if 'edit_dia' in st.session_state:
-        dia_n, f_str = st.session_state.edit_dia
-        st.markdown(f"### Gestionar {dia_n}/{mes_actual}")
-        
-        # Eliminar si existe
-        if not fichajes_df.empty and not fichajes_df[fichajes_df['fecha_dia'] == f_str].empty:
-            if st.button("🗑️ ELIMINAR", type="primary", use_container_width=True):
-                supabase.table("fichajes").delete().eq("empleado_id", emp_id).eq("fecha_dia", f_str).execute()
-                del st.session_state.edit_dia; st.rerun()
-        else:
-            with st.form("fichar"):
-                c1, c2 = st.columns(2)
-                h_i = c1.selectbox("Entrada", [f"{i:02d}:00" for i in range(24)], index=22)
-                h_s = c2.selectbox("Salida", [f"{i:02d}:00" for i in range(24)], index=3)
-                h_c = st.number_input("Horas Contrato", value=5.0)
-                if st.form_submit_button("GUARDAR"):
-                    norm, extra = calcular_duracion_turno(h_i, h_s), 0 # Simplificado
-                    norm, extra = (h_c, round(calcular_duracion_turno(h_i, h_s)-h_c, 2)) if calcular_duracion_turno(h_i, h_s) > h_c else (calcular_duracion_turno(h_i, h_s), 0.0)
-                    supabase.table("fichajes").insert({"empleado_id": emp_id, "fecha_dia": f_str, "hora_entrada": h_i, "hora_salida": h_s, "horas_normales": norm, "horas_extras": extra, "tipo": "trabajo"}).execute()
-                    del st.session_state.edit_dia; st.rerun()
-        if st.button("Cerrar"): del st.session_state.edit_dia; st.rerun()
-
-    # --- RESUMEN FINAL ---
-    st.write("##")
-    neto_e = round(total_e - total_d, 2)
-    total_ord = round(total_n + total_d, 2)
-    txt_res = f"TOTAL MES: {round(total_n, 2)}h Realizadas + {round(total_d, 2)}h Debidas = {total_ord}h NORMALES | EXTRAS: {round(total_e, 2)}h - {total_d}h Deuda = {neto_e}h NETAS"
-    st.markdown(f"<div class='resumen-footer'>{txt_res}</div>", unsafe_allow_html=True)
+    # FORMULARIO PARA FICHAR (Solo para ellas)
+    if 'edit_fichaje' in st.session_state and not es_alex:
+        with st.expander(f"Fichar día {st.session_state.edit_fichaje}", expanded=True):
+            c1, c2 = st.columns(2)
+            h_in = c1.text_input("Entrada (HH:MM)", "22:00")
+            h_out = c2.text_input("Salida (HH:MM)", "03:00")
+            tipo = st.selectbox("Tipo", ["trabajo", "vacaciones"])
+            if st.button("Guardar Fichaje"):
+                supabase.table("fichajes").insert({"empleado_id": emp_id, "fecha_dia": st.session_state.edit_fichaje, "hora_entrada": h_in, "hora_salida": h_out, "horas_normales": 5.0, "horas_extras": 0.0, "tipo": tipo}).execute()
+                del st.session_state.edit_fichaje; st.rerun()
+            if st.button("🗑️ ELIMINAR"):
+                supabase.table("fichajes").delete().eq("empleado_id", emp_id).eq("fecha_dia", st.session_state.edit_fichaje).execute()
+                del st.session_state.edit_fichaje; st.rerun()
