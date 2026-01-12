@@ -7,9 +7,15 @@ st.set_page_config(page_title="Bar App", page_icon="🍺")
 
 # --- CONEXIÓN DIRECTA A LA NUBE ---
 def conectar_db():
-    # Esta dirección funcionará perfectamente desde los servidores de la App
-    DB_URI = "postgresql://postgres:Tinacasa1999.@db.kljizxbakvzytmaxqodw.supabase.co:6543/postgres"
-    return psycopg2.connect(DB_URI)
+    # 1. Usamos el puerto 6543 (Transaction Pooler) que es más estable para Apps
+    # 2. Añadimos sslmode=require para que la nube lo acepte
+    DB_URI = "postgresql://postgres:Tinacasa1999.@db.kljizxbakvzytmaxqodw.supabase.co:6543/postgres?sslmode=require"
+    
+    try:
+        return psycopg2.connect(DB_URI, connect_timeout=10)
+    except Exception as e:
+        st.error(f"Error de conexión real: {e}")
+        return None
 
 st.title("🍺 Horario Desastre")
 
@@ -35,3 +41,4 @@ if user != "Selecciona...":
     
 
     conn.close()
+
