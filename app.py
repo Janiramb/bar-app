@@ -12,33 +12,38 @@ url = "https://kljizxbakvzytmaxqodw.supabase.co"
 key = "sb_publishable_aV6LrJVsVo2a_129xBbNdw_TSO_7pDz"
 supabase = create_client(url, key)
 
-# --- COLORES PASTEL DEFINIDOS ---
-COLOR_FONDO_BASE = "#E8F8F5"   # Verde pastel suave
-COLOR_ALEX = "#FADBD8"         # Rojo pastel
+# --- COLORES REFINADOS ---
+COLOR_FONDO_BASE = "#A2D9CE"   # Verde Menta más oscuro y sólido
+COLOR_ALEX = "#FADBD8"         # Rojo/Rosa pastel
 COLOR_JANI = "#FCF3CF"         # Amarillo mostaza pastel
 COLOR_IRIA = "#EBDEF0"         # Morado pastel
-COLOR_TEXTO = "#2C3E50"
+COLOR_TEXTO = "#1B2631"        # Texto casi negro para leer mejor
 
-# --- ESTILOS CSS (Sin transparencias raras) ---
+# --- ESTILOS CSS ---
 st.markdown(f"""
     <style>
     .stApp {{ background-color: {COLOR_FONDO_BASE}; }}
     .stButton>button {{
         color: black !important;
         background-color: white !important;
-        border: 2px solid #BDC3C7 !important;
-        border-radius: 10px;
+        border: 2px solid #5D6D7E !important;
+        border-radius: 12px;
         font-weight: bold;
         width: 100%;
+        box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
     }}
     .dia-caja {{
-        border: 1px solid #BDC3C7;
+        border: 1px solid #7FB3D5;
         padding: 10px;
         border-radius: 8px;
         text-align: center;
-        min-height: 90px;
+        min-height: 95px;
         background-color: white;
         color: black;
+        box-shadow: 1px 1px 3px rgba(0,0,0,0.05);
+    }}
+    h1, h2, h3, p {{
+        color: {COLOR_TEXTO} !important;
     }}
     </style>
     """, unsafe_allow_html=True)
@@ -50,16 +55,22 @@ if 'a' not in st.session_state: st.session_state.a = datetime.now().year
 
 # --- PANTALLA 1: INICIO ---
 if st.session_state.page == 'inicio':
-    st.markdown("<h1 style='text-align:center;'>🍺 HORARIO DESASTRE 🍺</h1>", unsafe_allow_html=True)
-    col1, col2, col3 = st.columns([1, 2, 1])
+    st.markdown("<h1 style='text-align:center; font-size: 50px;'>🍺 HORARIO DESASTRE</h1>", unsafe_allow_html=True)
+    st.write("##")
+    col1, col2, col3 = st.columns([1, 1.8, 1])
     with col2:
-        st.markdown(f'<style>div[row-id="alx"] button {{border-color: #E74C3C !important;}}</style>', unsafe_allow_html=True)
+        # Perfil Alex con su color
+        st.markdown(f'<style>div[row-id="alx"] button {{background-color: {COLOR_ALEX} !important;}}</style>', unsafe_allow_html=True)
         if st.button("🧔 PERFIL ALEX", key="alx"): st.session_state.page = 'menu_alex'; st.rerun()
         
+        st.write("")
+        # Perfil Janira con su color
         st.markdown(f'<style>div[row-id="jan"] button {{background-color: {COLOR_JANI} !important;}}</style>', unsafe_allow_html=True)
         if st.button("👩‍🦰 PERFIL JANIRA", key="jan"):
             st.session_state.page = 'calendario'; st.session_state.user = 'Janira'; st.session_state.emp_id = 2; st.rerun()
         
+        st.write("")
+        # Perfil Iria con su color
         st.markdown(f'<style>div[row-id="iri"] button {{background-color: {COLOR_IRIA} !important;}}</style>', unsafe_allow_html=True)
         if st.button("👩‍🦳 PERFIL IRIA", key="iri"):
             st.session_state.page = 'calendario'; st.session_state.user = 'Iria'; st.session_state.emp_id = 3; st.rerun()
@@ -70,37 +81,40 @@ elif st.session_state.page == 'menu_alex':
     if st.button("◀ VOLVER AL INICIO"): st.session_state.page = 'inicio'; st.rerun()
     st.title("⚙️ Panel de Alex")
     
-    t1, t2 = st.tabs(["📅 Horarios Base Semanales", "🌟 Días Especiales"])
+    t1, t2 = st.tabs(["📅 Horarios Base (Semanales)", "🌟 Días Especiales (Estrellas)"])
     
     with t1:
+        st.write("### Configurar contrato fijo por día")
         with st.form("f_base"):
             e = st.selectbox("Empleado", [2, 3], format_func=lambda x: "Janira" if x==2 else "Iria")
-            d = st.selectbox("Día", range(7), format_func=lambda x: ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"][x])
-            h = st.number_input("Horas Contrato", value=5.0)
-            if st.form_submit_button("Guardar/Actualizar"):
+            d = st.selectbox("Día de la semana", range(7), format_func=lambda x: ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"][x])
+            h = st.number_input("Horas fijas de contrato", value=5.0, step=0.5)
+            if st.form_submit_button("Guardar o Modificar Horario"):
                 supabase.table("horarios_semanales").upsert({"empleado_id": e, "dia_semana": d, "hora_inicio": str(h)}).execute()
-                st.success("Guardado correctamente")
+                st.success(f"Horario actualizado para el {d}")
         
-        st.write("### Horarios actuales guardados:")
+        # TABLA DE REVISIÓN PARA ALEX
         res_h = supabase.table("horarios_semanales").select("*").execute()
         if res_h.data:
+            st.write("#### Horarios guardados actualmente:")
             df_h = pd.DataFrame(res_h.data)
-            df_h['Día'] = df_h['dia_semana'].map(lambda x: ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"][int(x)])
+            df_h['Día'] = df_h['dia_semana'].map(lambda x: ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"][int(x)])
             df_h['Empleado'] = df_h['empleado_id'].map(lambda x: "Janira" if x==2 else "Iria")
-            st.table(df_h[['Empleado', 'Día', 'hora_inicio']])
+            st.dataframe(df_h[['Empleado', 'Día', 'hora_inicio']], use_container_width=True)
 
     with t2:
+        st.write("### Añadir estrella a un día concreto")
         with st.form("f_esp"):
             e_e = st.selectbox("Empleado", [2, 3], format_func=lambda x: "Janira" if x==2 else "Iria", key="e_e")
-            f_e = st.date_input("Fecha")
-            h_e = st.number_input("Horas", value=8.0)
+            f_e = st.date_input("Fecha de la estrella")
+            h_e = st.number_input("Horas para ese día", value=8.0)
             if st.form_submit_button("Añadir Estrella ★"):
                 supabase.table("dias_especiales").insert({"empleado_id": e_e, "fecha": str(f_e), "horas_contrato": h_e}).execute()
-                st.success("Día especial añadido")
+                st.success("Estrella añadida al calendario")
 
     st.divider()
-    if st.button("Ver Calendario JANIRA"): st.session_state.page = 'calendario'; st.session_state.user = 'Alex'; st.session_state.ver_id = 2; st.rerun()
-    if st.button("Ver Calendario IRIA"): st.session_state.page = 'calendario'; st.session_state.user = 'Alex'; st.session_state.ver_id = 3; st.rerun()
+    if st.button("👁️ Consultar JANIRA"): st.session_state.page = 'calendario'; st.session_state.user = 'Alex'; st.session_state.ver_id = 2; st.rerun()
+    if st.button("👁️ Consultar IRIA"): st.session_state.page = 'calendario'; st.session_state.user = 'Alex'; st.session_state.ver_id = 3; st.rerun()
 
 # --- PANTALLA 3: CALENDARIO ---
 elif st.session_state.page == 'calendario':
@@ -108,17 +122,18 @@ elif st.session_state.page == 'calendario':
     id_t = st.session_state.ver_id if es_alex else st.session_state.emp_id
     nom = "Janira" if id_t == 2 else "Iria"
     
+    # Fondo del calendario según el perfil
     st.markdown(f"<style>.stApp {{ background-color: {COLOR_JANI if id_t==2 else COLOR_IRIA}; }}</style>", unsafe_allow_html=True)
     
-    # NAVEGACIÓN DE MESES (CORREGIDA)
+    # NAVEGACIÓN
     c1, c2, c3 = st.columns([1, 2, 1])
-    if c1.button("◀ MES ANT."):
+    if c1.button("◀ MES ANTERIOR"):
         st.session_state.m -= 1
         if st.session_state.m < 1:
             st.session_state.m = 12
             st.session_state.a -= 1
         st.rerun()
-    if c3.button("MES SIG. ▶"):
+    if c3.button("MES SIGUIENTE ▶"):
         st.session_state.m += 1
         if st.session_state.m > 12:
             st.session_state.m = 1
@@ -127,7 +142,7 @@ elif st.session_state.page == 'calendario':
     with c2:
         mes_nom = calendar.month_name[st.session_state.m].upper()
         st.markdown(f"<h2 style='text-align:center;'>{mes_nom} {st.session_state.a}</h2>", unsafe_allow_html=True)
-        st.markdown(f"<p style='text-align:center;'>Horario de {nom}</p>", unsafe_allow_html=True)
+        st.markdown(f"<p style='text-align:center; font-weight:bold;'>HORARIO DE {nom.upper()}</p>", unsafe_allow_html=True)
 
     if st.button("🏠 VOLVER AL INICIO"): st.session_state.page = 'inicio'; st.rerun()
 
@@ -158,9 +173,11 @@ elif st.session_state.page == 'calendario':
                 c_bg = "white"
                 txt = f"<b>{dia}{' ★' if esp is not None else ''}</b>"
                 if f is not None:
-                    c_bg = "#D4EFDF"
+                    c_bg = "#D4EFDF" # Verde pastel para fichaje
                     txt += f"<br><small>{f['hora_entrada']}-{f['hora_salida']}</small><br><b style='font-size:10px;'>{f['horas_normales']}N/{f['horas_extras']}E</b>"
+                
                 st.markdown(f"<div class='dia-caja' style='background-color:{c_bg};'>{txt}</div>", unsafe_allow_html=True)
+                
                 if not es_alex:
                     if st.button("📝", key=f"d_{dia}"):
                         st.session_state.fichar = (f_s, h_base)
@@ -169,10 +186,13 @@ elif st.session_state.page == 'calendario':
     # Formulario fichar
     if 'fichar' in st.session_state and not es_alex:
         f_dia, h_con = st.session_state.fichar
-        with st.expander(f"Fichar {f_dia}", expanded=True):
-            ent = st.text_input("Entrada", "22:00")
-            sal = st.text_input("Salida", "03:00")
-            if st.button("Confirmar"):
-                # Cálculo simplificado (puedes añadir tu función de horas aquí)
-                supabase.table("fichajes").insert({"empleado_id": id_t, "fecha_dia": f_dia, "hora_entrada": ent, "hora_salida": sal, "horas_normales": h_con, "horas_extras": 0.0}).execute()
+        with st.expander(f"Gestionar día {f_dia} (Contrato: {h_con}h)", expanded=True):
+            ent = st.text_input("Hora Entrada", "22:00")
+            sal = st.text_input("Hora Salida", "03:00")
+            if st.button("💾 Guardar"):
+                # Aquí podrías llamar a tu función de cálculo
+                supabase.table("fichajes").insert({"empleado_id": id_t, "fecha_dia": f_dia, "hora_entrada": ent, "hora_salida": sal, "horas_normales": h_con, "horas_extras": 0.0, "tipo": "trabajo"}).execute()
+                del st.session_state.fichar; st.rerun()
+            if st.button("🗑️ Eliminar"):
+                supabase.table("fichajes").delete().eq("empleado_id", id_t).eq("fecha_dia", f_dia).execute()
                 del st.session_state.fichar; st.rerun()
