@@ -5,8 +5,8 @@ from supabase import create_client, Client
 st.set_page_config(page_title="Bar App", page_icon="🍺")
 
 # SUSTITUYE ESTO CON TUS DATOS DE SETTINGS > API
-url = "TU_PROJECT_URL_AQUÍ"
-key = "TU_API_KEY_ANON_PUBLIC_AQUÍ"
+url = https://kljizxbakvzytmaxqodw.supabase.co
+key = sb_publishable_aV6LrJVsVo2a_129xBbNdw_TSO_7pDz
 
 @st.cache_resource
 def conectar_supabase():
@@ -35,3 +35,4 @@ if supabase:
             st.warning("Conexión OK, pero la tabla 'empleados' no se lee. Revisa si activaste RLS.")
 else:
     st.error("No se pudo configurar el cliente de Supabase.")
+
