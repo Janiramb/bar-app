@@ -7,13 +7,13 @@ st.set_page_config(page_title="Bar App", page_icon="🍺")
 
 def conectar_db():
     try:
-        # CONEXIÓN POR IP DIRECTA (Sáltate el error de Host)
-        # El host 15.237.253.218 es el que corresponde a tu base de datos
+        # Usamos el Pooler de AWS que es el más estable para Streamlit
+        # IMPORTANTE: El usuario lleva el ID del proyecto al final (.kljizxbakvzytmaxqodw)
         conn = psycopg2.connect(
-            host="15.237.253.218",
-            port="5432",
+            host="aws-0-eu-central-1.pooler.supabase.com",
+            port="6543",
             database="postgres",
-            user="postgres",
+            user="postgres.kljizxbakvzytmaxqodw",
             password="Tinacasa1999.",
             sslmode="require",
             connect_timeout=30
@@ -28,12 +28,14 @@ st.title("🍺 Horario Desastre")
 user = st.selectbox("¿Quién eres?", ["Selecciona...", "Alex", "Janira", "Iria"])
 
 if user != "Selecciona...":
-    with st.spinner('Conectando con el bar...'):
+    with st.spinner('Despertando la base de datos...'):
         conn = conectar_db()
     
     if conn:
-        st.success(f"✅ ¡POR FIN CONECTADO! Hola {user}")
-        # Mantenemos la conexión abierta un segundo para confirmar
+        st.success(f"✅ ¡CONECTADO! Hola {user}")
+        # Aquí meteremos la lógica de guardado en el siguiente paso
         conn.close()
     else:
-        st.warning("⚠️ El servidor no responde. Revisa el SSL en Supabase.")
+        st.warning("⚠️ El servidor sigue sin responder. Mira el paso de abajo.")
+        if st.button("🔄 Reintentar conexión"):
+            st.rerun()
