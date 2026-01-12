@@ -6,19 +6,13 @@ from datetime import datetime
 st.set_page_config(page_title="Bar App", page_icon="🍺")
 
 def conectar_db():
+    # Esta es la cadena de conexión completa (URI). 
+    # Es la forma más segura de que Supabase reconozca tu 'Tenant' (proyecto)
+    DB_URI = "postgresql://postgres.kljizxbakvzytmaxqodw:Tinacasa1999.@aws-0-eu-central-1.pooler.supabase.com:6543/postgres?sslmode=require"
+    
     try:
-        # ⚠️ EL SECRETO: El usuario DEBE ser postgres.kljizxbakvzytmaxqodw
-        # Esto le dice a Supabase exactamente a qué proyecto entrar
-        conn = psycopg2.connect(
-            host="aws-0-eu-central-1.pooler.supabase.com",
-            port="6543",
-            database="postgres",
-            user="postgres.kljizxbakvzytmaxqodw", 
-            password="Tinacasa1999.",
-            sslmode="require",
-            connect_timeout=20
-        )
-        return conn
+        # Conectamos usando la URI directamente
+        return psycopg2.connect(DB_URI, connect_timeout=30)
     except Exception as e:
         st.error(f"❌ Error de red: {e}")
         return None
@@ -28,12 +22,12 @@ st.title("🍺 Horario Desastre")
 user = st.selectbox("¿Quién eres?", ["Selecciona...", "Alex", "Janira", "Iria"])
 
 if user != "Selecciona...":
-    with st.spinner('Conectando con el bar...'):
+    with st.spinner('Entrando en la base de datos...'):
         conn = conectar_db()
     
     if conn:
         st.success(f"✅ ¡POR FIN! Conectado con éxito, {user}")
-        # Aquí meteremos los botones de fichaje en cuanto salga el check verde
+        # Aquí meteremos los botones en cuanto salga este mensaje verde
         conn.close()
     else:
-        st.warning("⚠️ Casi lo tenemos, pero el usuario no ha sido reconocido aún.")
+        st.warning("⚠️ El servidor sigue sin reconocer el usuario. Mira el paso de abajo.")
