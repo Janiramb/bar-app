@@ -6,9 +6,8 @@ from datetime import datetime
 st.set_page_config(page_title="Bar App", page_icon="🍺")
 
 def conectar_db():
-    # USAMOS EL PUERTO 6543 (Transaction Pooler)
-    # Reemplaza [TU-PROYECTO-ID] por: kljizxbakvzytmaxqodw
-    # La contraseña es la que ya tienes: Tinacasa1999.
+    # El usuario para el Pooler DEBE ser: nombre_usuario.ID_PROYECTO
+    # Tu ID de proyecto es: kljizxbakvzytmaxqodw
     DB_URI = "postgresql://postgres.kljizxbakvzytmaxqodw:Tinacasa1999.@aws-0-eu-central-1.pooler.supabase.com:6543/postgres?sslmode=require"
     
     try:
@@ -26,7 +25,7 @@ if user != "Selecciona...":
     
     if conn:
         st.success(f"✅ ¡Conectado! Hola {user}")
-        # Aquí va el resto de tu lógica de botones
+        # Aquí ya puedes poner tus botones de fichar
         conn.close()
     else:
-        st.warning("⚠️ El servidor está tardando en responder. Prueba a recargar la página.")
+        st.warning("⚠️ Error de acceso. Revisa los datos de conexión.")
