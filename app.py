@@ -1,41 +1,32 @@
 import streamlit as st
 import psycopg2
-import time
 from datetime import datetime
 
 # --- CONFIGURACIÓN ---
 st.set_page_config(page_title="Bar App", page_icon="🍺")
 
 def conectar_db():
-    # Usamos la IP directa y el formato más compatible
-    DB_URI = "host=15.237.253.218 port=5432 dbname=postgres user=postgres password=Tinacasa1999. sslmode=require"
+    # USAMOS EL PUERTO 6543 (Transaction Pooler)
+    # Reemplaza [TU-PROYECTO-ID] por: kljizxbakvzytmaxqodw
+    # La contraseña es la que ya tienes: Tinacasa1999.
+    DB_URI = "postgresql://postgres.kljizxbakvzytmaxqodw:Tinacasa1999.@aws-0-eu-central-1.pooler.supabase.com:6543/postgres?sslmode=require"
     
-    intentos = 0
-    while intentos < 3:
-        try:
-            # Intentamos conectar con un tiempo de espera muy amplio
-            conn = psycopg2.connect(DB_URI, connect_timeout=30)
-            return conn
-        except Exception as e:
-            intentos += 1
-            if intentos == 3:
-                st.error(f"❌ Agotados los 3 intentos de red: {e}")
-                return None
-            time.sleep(2) # Esperamos 2 segundos antes de reintentar
+    try:
+        return psycopg2.connect(DB_URI, connect_timeout=15)
+    except Exception as e:
+        st.error(f"❌ Error de red: {e}")
+        return None
 
 st.title("🍺 Horario Desastre")
 
 user = st.selectbox("¿Quién eres?", ["Selecciona...", "Alex", "Janira", "Iria"])
 
 if user != "Selecciona...":
-    with st.spinner('Conectando con la base de datos...'):
-        conn = conectar_db()
+    conn = conectar_db()
     
     if conn:
         st.success(f"✅ ¡Conectado! Hola {user}")
-        # Aquí cargaríamos el resto de la App
+        # Aquí va el resto de tu lógica de botones
         conn.close()
     else:
-        st.warning("⚠️ Supabase no responde. Por favor, revisa el paso de abajo.")
-        if st.button("🔄 Forzar Reintento"):
-            st.rerun()
+        st.warning("⚠️ El servidor está tardando en responder. Prueba a recargar la página.")
