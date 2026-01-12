@@ -6,11 +6,12 @@ from datetime import datetime
 st.set_page_config(page_title="Bar App", page_icon="🍺")
 
 def conectar_db():
-    # El usuario para el Pooler DEBE ser: nombre_usuario.ID_PROYECTO
-    # Tu ID de proyecto es: kljizxbakvzytmaxqodw
+    # ⚠️ CAMBIO CLAVE: El usuario ahora incluye el ID de tu proyecto (postgres.kljizxbakvzytmaxqodw)
+    # Esto es obligatorio para usar el puerto 6543 en Supabase
     DB_URI = "postgresql://postgres.kljizxbakvzytmaxqodw:Tinacasa1999.@aws-0-eu-central-1.pooler.supabase.com:6543/postgres?sslmode=require"
     
     try:
+        # Intentamos conectar con un tiempo de espera de 15 segundos
         return psycopg2.connect(DB_URI, connect_timeout=15)
     except Exception as e:
         st.error(f"❌ Error de red: {e}")
@@ -24,8 +25,8 @@ if user != "Selecciona...":
     conn = conectar_db()
     
     if conn:
-        st.success(f"✅ ¡Conectado! Hola {user}")
-        # Aquí ya puedes poner tus botones de fichar
+        st.success(f"✅ ¡Conectado con éxito! Hola {user}")
+        # Aquí es donde pondremos los botones de fichar en el siguiente paso
         conn.close()
     else:
-        st.warning("⚠️ Error de acceso. Revisa los datos de conexión.")
+        st.warning("⚠️ No se pudo establecer la conexión. Revisa los logs de la App.")
