@@ -7,16 +7,15 @@ st.set_page_config(page_title="Bar App", page_icon="🍺")
 
 def conectar_db():
     try:
-        # Usamos el Pooler de AWS que es el más estable para Streamlit
-        # IMPORTANTE: El usuario lleva el ID del proyecto al final (.kljizxbakvzytmaxqodw)
+        # El secreto está en el 'user': debe llevar el ID después del punto
         conn = psycopg2.connect(
             host="aws-0-eu-central-1.pooler.supabase.com",
             port="6543",
             database="postgres",
-            user="postgres.kljizxbakvzytmaxqodw",
+            user="postgres.kljizxbakvzytmaxqodw", 
             password="Tinacasa1999.",
             sslmode="require",
-            connect_timeout=30
+            connect_timeout=20
         )
         return conn
     except Exception as e:
@@ -28,14 +27,12 @@ st.title("🍺 Horario Desastre")
 user = st.selectbox("¿Quién eres?", ["Selecciona...", "Alex", "Janira", "Iria"])
 
 if user != "Selecciona...":
-    with st.spinner('Despertando la base de datos...'):
+    with st.spinner('Conectando con el bar...'):
         conn = conectar_db()
     
     if conn:
-        st.success(f"✅ ¡CONECTADO! Hola {user}")
-        # Aquí meteremos la lógica de guardado en el siguiente paso
+        st.success(f"✅ ¡POR FIN! Conectado con éxito, {user}")
+        # Aquí ya podemos empezar a meter los botones de fichaje
         conn.close()
     else:
-        st.warning("⚠️ El servidor sigue sin responder. Mira el paso de abajo.")
-        if st.button("🔄 Reintentar conexión"):
-            st.rerun()
+        st.warning("⚠️ Casi lo tenemos, pero el usuario no ha sido reconocido.")
