@@ -7,13 +7,15 @@ st.set_page_config(page_title="Bar App", page_icon="🍺")
 
 def conectar_db():
     try:
-        # En lugar de una URI larga, separamos los datos para que no haya errores de lectura
+        # Usamos la conexión directa (Puerto 5432)
+        # El host es tu dirección completa de Supabase
+        # El usuario es solo 'postgres' (aquí NO se pone el ID del proyecto)
         conn = psycopg2.connect(
-            host="aws-0-eu-central-1.pooler.supabase.com",
-            port="6543",
+            host="db.kljizxbakvzytmaxqodw.supabase.co",
+            port="5432",
             database="postgres",
-            user="postgres.kljizxbakvzytmaxqodw", # Tu ID de proyecto
-            password="Tinacasa1999.", # Tu contraseña
+            user="postgres",
+            password="Tinacasa1999.",
             sslmode="require",
             connect_timeout=20
         )
@@ -27,11 +29,11 @@ st.title("🍺 Horario Desastre")
 user = st.selectbox("¿Quién eres?", ["Selecciona...", "Alex", "Janira", "Iria"])
 
 if user != "Selecciona...":
-    conn = conectar_db()
+    with st.spinner('Conectando...'):
+        conn = conectar_db()
     
     if conn:
         st.success(f"✅ ¡POR FIN! Conectado con éxito, {user}")
-        # Cerramos para probar que la conexión es estable
         conn.close()
     else:
-        st.warning("⚠️ Sigue fallando la identificación. Revisa el ID de proyecto.")
+        st.warning("⚠️ Sigue sin conectar. Vamos a revisar la IP.")
