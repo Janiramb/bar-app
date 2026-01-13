@@ -70,17 +70,17 @@ if st.session_state.page == 'inicio':
         # Botón ALEX
         st.markdown(f'<div class="big-button">', unsafe_allow_html=True)
         st.markdown(f'<style>div[row-id="alx"] button {{background-color: {COLOR_ALEX} !important;}}</style>', unsafe_allow_html=True)
-        if st.button("🧔 PERFIL ALEX", key="alx", use_container_width=True): 
+        if st.button("PERFIL ALEX", key="alx", use_container_width=True): 
             st.session_state.page = 'menu_alex'; st.rerun()
         
         # Botón JANIRA
         st.markdown(f'<style>div[row-id="jan"] button {{background-color: {COLOR_JANI} !important;}}</style>', unsafe_allow_html=True)
-        if st.button("👩‍🦰 PERFIL JANIRA", key="jan", use_container_width=True):
+        if st.button("PERFIL JANI", key="jan", use_container_width=True):
             st.session_state.page = 'calendario'; st.session_state.user = 'Janira'; st.session_state.emp_id = 2; st.rerun()
         
         # Botón IRIA
         st.markdown(f'<style>div[row-id="iri"] button {{background-color: {COLOR_IRIA} !important;}}</style>', unsafe_allow_html=True)
-        if st.button("👩‍🦳 PERFIL IRIA", key="iri", use_container_width=True):
+        if st.button("PERFIL IRIA", key="iri", use_container_width=True):
             st.session_state.page = 'calendario'; st.session_state.user = 'Iria'; st.session_state.emp_id = 3; st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
@@ -136,3 +136,4 @@ elif st.session_state.page == 'calendario':
 
     if st.button("🏠 INICIO"): st.session_state.page = 'inicio'; st.rerun()
     # (Aquí sigue el resto del código del calendario...)
+
