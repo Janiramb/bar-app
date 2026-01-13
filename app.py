@@ -18,19 +18,19 @@ COLOR_ALEX = "#FADBD8"
 COLOR_JANI = "#FCF3CF"
 COLOR_IRIA = "#EBDEF0"
 
-# --- ESTILOS CSS ---
+# --- ESTILOS ---
 st.markdown(f"""
     <style>
     .stApp {{ background-color: {COLOR_FONDO_BASE}; }}
     .big-button button {{ height: 100px !important; font-size: 25px !important; border-radius: 20px !important; border: 4px solid #5D6D7E !important; }}
     .stButton>button, div[data-testid="stFormSubmitButton"]>button {{ color: black !important; background-color: white !important; border: 2px solid #5D6D7E !important; font-weight: bold !important; }}
-    .dia-caja {{ border: 1px solid #7FB3D5; padding: 10px; border-radius: 10px; text-align: center; min-height: 120px; background-color: white; color: black; }}
+    .dia-caja {{ border: 1px solid #7FB3D5; padding: 10px; border-radius: 10px; text-align: center; min-height: 125px; background-color: white; color: black; }}
     .info-corte {{ background-color: #D6EAF8; padding: 15px; border-radius: 10px; border: 2px solid #3498DB; text-align: center; margin-bottom: 15px; font-size: 18px; color: #1B4F72; }}
     .resumen-pie {{ background-color: white; padding: 20px; border-radius: 15px; border: 3px solid #5D6D7E; text-align: center; font-size: 20px; font-weight: bold; color: #2C3E50; }}
     </style>
     """, unsafe_allow_html=True)
 
-# --- LÓGICA DE TIEMPOS DEFINITIVA (CORTE DE MES REAL) ---
+# --- LÓGICA DE TIEMPOS CORREGIDA ---
 def calcular_tiempos_finales(h_ent, h_sal, h_con, es_ultimo_dia):
     fmt = "%H:%M"
     try:
@@ -41,24 +41,12 @@ def calcular_tiempos_finales(h_ent, h_sal, h_con, es_ultimo_dia):
         total_h = (t2 - t1).total_seconds() / 3600
         h_traspaso = 0.0
         
-        # SI ES EL ÚLTIMO DÍA DEL MES (Corte a las 00:00)
+        # CORRECCIÓN PARA EL DÍA 31: Si el turno empieza después de las 00:00 del 31
+        # Técnicamente es la madrugada del 31, pero para el bar cuenta como el cierre del 30.
+        # Si Janira ficha el 31 a las 00:30, todo eso va para enero.
         if es_ultimo_dia:
-            # Calculamos cuántas horas ocurrieron después de las 00:00
-            # Si entraste a las 00:30, todo el turno es "después"
-            if t1.hour < 12: # Turnos que empiezan de madrugada el día 31 (muy raro)
-                h_este_mes = total_h
-            else: # Turnos normales que cruzan la noche
-                # Si entras a las 22:00, las horas hasta las 00:00 se quedan.
-                # Si entras a las 00:30 del día 31, eso es técnicamente "mañana" 
-                # pero como lo fichas en el 31, lo mandamos al mes siguiente.
-                t_corte = (datetime.combine(t1.date(), datetime.min.time()) + timedelta(days=1))
-                if t1 >= t_corte: # Ya es el día siguiente
-                    h_este_mes = 0.0
-                else:
-                    h_este_mes = max(0.0, (t_corte - t1).total_seconds() / 3600)
-            
-            h_traspaso = total_h - h_este_mes
-            total_h = h_este_mes
+            h_traspaso = total_h
+            total_h = 0.0 # No suma nada a diciembre
             
         n = min(total_h, h_con)
         e = max(0.0, total_h - h_con)
@@ -66,11 +54,12 @@ def calcular_tiempos_finales(h_ent, h_sal, h_con, es_ultimo_dia):
         return round(n, 1), round(e, 1), round(d, 1), round(h_traspaso, 1)
     except: return 0.0, 0.0, 0.0, 0.0
 
-# --- NAVEGACIÓN Y PANTALLAS ---
+# --- NAVEGACIÓN ---
 if 'page' not in st.session_state: st.session_state.page = 'inicio'
 if 'm' not in st.session_state: st.session_state.m = datetime.now().month
 if 'a' not in st.session_state: st.session_state.a = datetime.now().year
 
+# --- PANTALLAS (INICIO Y ALEX) ---
 if st.session_state.page == 'inicio':
     st.markdown("<h1 style='text-align:center;'>🍺 HORARIO DESASTRE</h1>", unsafe_allow_html=True)
     _, col_centro, _ = st.columns([0.5, 2, 0.5])
@@ -120,18 +109,21 @@ elif st.session_state.page == 'menu_alex':
                     for i, v in enumerate(hi): supabase.table("horarios_semanales").insert({"empleado_id": 3, "dia_semana": i, "hora_inicio": str(v)}).execute()
                     st.success("Guardado"); st.rerun()
     with tab2:
-        st.subheader("Añadir Estrella ★")
-        with st.form("fs"):
+        st.subheader("Marcar Estrella ★")
+        with st.form("f_star"):
             e_id = st.selectbox("Empleado", [2, 3], format_func=lambda x: "Janira" if x==2 else "Iria")
-            f_e = st.date_input("Fecha")
-            h_e = st.number_input("Horas", value=8.0, step=0.5)
+            f_star = st.date_input("Fecha Especial")
+            h_star = st.number_input("Horas Contrato", value=8.0, step=0.5)
             if st.form_submit_button("GUARDAR ESTRELLA"):
-                supabase.table("dias_especiales").insert({"empleado_id": e_id, "fecha": str(f_e), "horas_contrato": h_e}).execute()
+                supabase.table("dias_especiales").insert({"empleado_id": e_id, "fecha": str(f_star), "horas_contrato": h_star}).execute()
                 st.success("Estrella añadida")
 
+# --- PANTALLA CALENDARIO ---
 elif st.session_state.page == 'calendario':
     id_t = st.session_state.emp_id
     st.markdown(f"<style>.stApp {{ background-color: {COLOR_JANI if id_t==2 else COLOR_IRIA}; }}</style>", unsafe_allow_html=True)
+    
+    # Navegación y Datos
     c1, c2, c3 = st.columns([1, 2, 1])
     if c1.button("◀ MES"):
         st.session_state.m -= 1
@@ -144,18 +136,20 @@ elif st.session_state.page == 'calendario':
     with c2: st.markdown(f"<h2 style='text-align:center;'>{calendar.month_name[st.session_state.m].upper()} {st.session_state.a}</h2>", unsafe_allow_html=True)
     if st.button("🏠 INICIO"): st.session_state.page = 'inicio'; st.rerun()
 
-    # Lógica Traspaso
+    # Lógica de Traspaso del mes pasado
     fecha_ant = datetime(st.session_state.a, st.session_state.m, 1) - timedelta(days=1)
     res_ant = supabase.table("fichajes").select("*").eq("empleado_id", id_t).eq("fecha_dia", fecha_ant.strftime("%Y-%m-%d")).execute()
-    traspaso = 0.0
+    traspaso_recibido = 0.0
     if res_ant.data:
         f_ant = res_ant.data[0]
         res_s_ant = supabase.table("horarios_semanales").select("*").eq("empleado_id", id_t).eq("dia_semana", fecha_ant.weekday()).execute()
         h_con_ant = float(res_s_ant.data[0]['hora_inicio']) if res_s_ant.data else 5.0
-        _, _, _, traspaso = calcular_tiempos_finales(f_ant['hora_entrada'], f_ant['hora_salida'], h_con_ant, True)
-    if traspaso > 0: st.markdown(f"<div class='info-corte'>ℹ️ Tienes {traspaso}h normales traspasadas del mes anterior</div>", unsafe_allow_html=True)
+        _, _, _, traspaso_recibido = calcular_tiempos_finales(f_ant['hora_entrada'], f_ant['hora_salida'], h_con_ant, True)
+    
+    if traspaso_recibido > 0:
+        st.markdown(f"<div class='info-corte'>ℹ️ Tienes {traspaso_recibido}h normales de cierre del mes anterior</div>", unsafe_allow_html=True)
 
-    # Datos
+    # Cargar este mes
     res_f = supabase.table("fichajes").select("*").eq("empleado_id", id_t).gte("fecha_dia", f"{st.session_state.a}-{st.session_state.m:02d}-01").lte("fecha_dia", f"{st.session_state.a}-{st.session_state.m:02d}-{calendar.monthrange(st.session_state.a, st.session_state.m)[1]}").execute()
     df_f = pd.DataFrame(res_f.data) if res_f.data else pd.DataFrame()
     res_s = supabase.table("horarios_semanales").select("*").eq("empleado_id", id_t).execute()
@@ -163,7 +157,7 @@ elif st.session_state.page == 'calendario':
     res_e = supabase.table("dias_especiales").select("*").eq("empleado_id", id_t).execute()
     df_e = pd.DataFrame(res_e.data) if res_e.data else pd.DataFrame()
 
-    t_r, t_b, t_d = 0.0, 0.0, 0.0
+    total_r, total_b, total_d = 0.0, 0.0, 0.0
     cal = calendar.monthcalendar(st.session_state.a, st.session_state.m)
     ult_dia_m = calendar.monthrange(st.session_state.a, st.session_state.m)[1]
 
@@ -182,21 +176,22 @@ elif st.session_state.page == 'calendario':
                 c_bg = "white"
                 if f:
                     n, b, d, _ = calcular_tiempos_finales(f['hora_entrada'], f['hora_salida'], h_con, dia == ult_dia_m)
-                    t_r += n; t_b += b; t_d += d
+                    total_r += n; total_b += b; total_d += d
                     c_bg = "#D4EFDF" if b == 0 else "#FADBD8"
                     txt += f"<br><small>{f['hora_entrada']}-{f['hora_salida']}</small><br>{n}N/{b}E"
-                    if d > 0: 
-                        c_bg = "#F5B041"
-                        txt += f"<br><b style='color:#C0392B;'>DEBES {d}h</b>"
+                    if d > 0: txt += f"<br><b style='color:red;'>DEBES {d}h</b>"
                 st.markdown(f"<div class='dia-caja' style='background-color:{c_bg};'>{txt}</div>", unsafe_allow_html=True)
                 if st.button("📝", key=f"d{dia}"): st.session_state.fichar = (f_s, h_con, f); st.rerun()
 
-    # RESUMEN (Matemática Janira)
+    # RESUMEN MATEMÁTICO ESTILO JANIRA
     st.markdown("---")
-    res_normales = round(t_r + t_d + traspaso, 1)
-    res_realizadas = round(t_r + traspaso, 1)
-    res_extras = round(t_b - t_d, 1)
-    st.markdown(f"<div class='resumen-pie'>TOTAL MES: {res_realizadas}h Realizadas + {t_d}h Debidas = {res_normales}h NORMALES<br>EXTRAS NETAS: {res_extras}h</div>", unsafe_allow_html=True)
+    res_realizadas = round(total_r + traspaso_recibido, 1)
+    res_normales = round(res_realizadas + total_d, 1)
+    res_extras = round(total_b - total_d, 1)
+    st.markdown(f"""<div class='resumen-pie'>
+        TOTAL MES: {res_realizadas}h Realizadas + {total_d}h Debidas = {res_normales}h NORMALES<br>
+        EXTRAS NETAS: {res_extras}h
+    </div>""", unsafe_allow_html=True)
 
     if 'fichar' in st.session_state:
         f_dia, h_c, f_act = st.session_state.fichar
