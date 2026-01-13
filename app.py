@@ -41,7 +41,7 @@ st.markdown(f"""
         padding: 8px;
         border-radius: 8px;
         text-align: center;
-        min-height: 105px;
+        min-height: 110px;
         background-color: white;
         color: black;
     }}
@@ -56,27 +56,33 @@ st.markdown(f"""
     </style>
     """, unsafe_allow_html=True)
 
-# --- LÓGICA DE CÁLCULO DE PRECISIÓN ---
-def calcular_tiempos_exactos(h_ent, h_sal, h_contrato):
+# --- LÓGICA DE CÁLCULO DEFINITIVA ---
+def calcular_tiempos_exactos(h_ent, h_sal, h_contrato_decimal):
     fmt = "%H:%M"
     try:
+        # 1. Calcular duración real en minutos
         t1 = datetime.strptime(h_ent, fmt)
         t2 = datetime.strptime(h_sal, fmt)
-        
         if t2 <= t1:
             t2 += timedelta(days=1)
         
-        # Calculamos la diferencia total en MINUTOS para evitar errores de coma flotante
-        diferencia = t2 - t1
-        minutos_totales = diferencia.total_seconds() / 60
-        horas_totales = minutos_totales / 60  # Ej: 300 min / 60 = 5.0 horas
+        minutos_trabajados = (t2 - t1).total_seconds() / 60
+        horas_trabajadas = minutos_trabajados / 60 # Decimal (ej: 5.0)
         
-        # Reparto basado en el contrato de Alex (h_contrato ya viene en formato decimal, ej: 3.5)
-        norm = min(horas_totales, h_contrato)
-        extra = max(0.0, horas_totales - h_contrato)
-        deuda = max(0.0, h_contrato - horas_totales)
+        # 2. Asegurar que el contrato es float
+        contrato = float(h_contrato_decimal)
         
-        return round(norm, 2), round(extra, 2), round(deuda, 2)
+        # 3. Reparto exacto
+        if horas_trabajadas >= contrato:
+            n = contrato
+            e = horas_trabajadas - contrato
+            d = 0.0
+        else:
+            n = horas_trabajadas
+            e = 0.0
+            d = contrato - horas_trabajadas
+            
+        return round(n, 2), round(e, 2), round(d, 2)
     except:
         return 0.0, 0.0, 0.0
 
@@ -85,7 +91,7 @@ if 'page' not in st.session_state: st.session_state.page = 'inicio'
 if 'm' not in st.session_state: st.session_state.m = datetime.now().month
 if 'a' not in st.session_state: st.session_state.a = datetime.now().year
 
-# --- PANTALLAS (INICIO Y ALEX) ---
+# --- PANTALLA INICIO ---
 if st.session_state.page == 'inicio':
     st.markdown("<h1 style='text-align:center; font-size: 55px; padding-bottom: 30px;'>🍺 HORARIO DESASTRE</h1>", unsafe_allow_html=True)
     _, col_centro, _ = st.columns([0.3, 2.4, 0.3])
@@ -98,14 +104,15 @@ if st.session_state.page == 'inicio':
             st.session_state.page = 'calendario'; st.session_state.user = 'Iria'; st.session_state.emp_id = 3; st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
+# --- PANTALLA ALEX ---
 elif st.session_state.page == 'menu_alex':
     st.markdown(f"<style>.stApp {{ background-color: {COLOR_ALEX}; }}</style>", unsafe_allow_html=True)
     if st.button("◀ VOLVER"): st.session_state.page = 'inicio'; st.rerun()
-    st.title("⚙️ Configuración de Horarios Base")
+    st.title("⚙️ Contratos por Día")
     dias_n = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
     cj, ci = st.columns(2)
     with cj:
-        st.subheader("👩‍🦰 Contrato JANIRA")
+        st.subheader("👩‍🦰 JANIRA")
         with st.form("fj"):
             hj = [st.number_input(f"{d}", value=5.0, step=0.1, key=f"j{i}") for i, d in enumerate(dias_n)]
             if st.form_submit_button("GUARDAR JANIRA"):
@@ -113,7 +120,7 @@ elif st.session_state.page == 'menu_alex':
                     supabase.table("horarios_semanales").upsert({"empleado_id": 2, "dia_semana": i, "hora_inicio": str(v)}).execute()
                 st.success("Guardado")
     with ci:
-        st.subheader("👩‍🦳 Contrato IRIA")
+        st.subheader("👩‍🦳 IRIA")
         with st.form("fi"):
             hi = [st.number_input(f"{d}", value=5.0, step=0.1, key=f"i{i}") for i, d in enumerate(dias_n)]
             if st.form_submit_button("GUARDAR IRIA"):
@@ -126,6 +133,7 @@ elif st.session_state.page == 'calendario':
     id_t = st.session_state.emp_id
     st.markdown(f"<style>.stApp {{ background-color: {COLOR_JANI if id_t==2 else COLOR_IRIA}; }}</style>", unsafe_allow_html=True)
     
+    # Navegación mes
     c1, c2, c3 = st.columns([1, 2, 1])
     if c1.button("◀ MES"):
         st.session_state.m -= 1
@@ -138,6 +146,7 @@ elif st.session_state.page == 'calendario':
     with c2: st.markdown(f"<h2 style='text-align:center;'>{calendar.month_name[st.session_state.m].upper()} {st.session_state.a}</h2>", unsafe_allow_html=True)
     if st.button("🏠 INICIO"): st.session_state.page = 'inicio'; st.rerun()
 
+    # Cargar datos
     res_f = supabase.table("fichajes").select("*").eq("empleado_id", id_t).execute()
     df_f = pd.DataFrame(res_f.data) if res_f.data else pd.DataFrame()
     res_s = supabase.table("horarios_semanales").select("*").eq("empleado_id", id_t).execute()
@@ -145,7 +154,9 @@ elif st.session_state.page == 'calendario':
 
     total_n, total_e, total_d = 0.0, 0.0, 0.0
     cal = calendar.monthcalendar(st.session_state.a, st.session_state.m)
-    
+    cols_h = st.columns(7)
+    for i, d in enumerate(["LUN", "MAR", "MIE", "JUE", "VIE", "SAB", "DOM"]): cols_h[i].write(f"**{d}**")
+
     for sem in cal:
         cols = st.columns(7)
         for i, dia in enumerate(sem):
@@ -160,12 +171,12 @@ elif st.session_state.page == 'calendario':
                 c_bg = "white"
                 txt = f"<b>{dia}</b>"
                 if f is not None:
-                    # USAMOS LA NUEVA FUNCIÓN DE PRECISIÓN
+                    # CÁLCULO EN TIEMPO REAL
                     n, e, d = calcular_tiempos_exactos(f['hora_entrada'], f['hora_salida'], h_con)
                     total_n += n; total_e += e; total_d += d
                     c_bg = "#D4EFDF" if e == 0 else "#FADBD8"
-                    txt += f"<br><small>{f['hora_entrada']}-{f['hora_salida']}</small><br>{n}N/{e}E"
-                    if d > 0: txt += f"<br><b style='color:red; font-size:10px;'>Faltan: {round(d,2)}h</b>"
+                    txt += f"<br><small>{f['hora_entrada']}-{f['hora_salida']}</small><br>{round(n,1)}N/{round(e,1)}E"
+                    if d > 0: txt += f"<br><b style='color:red; font-size:10px;'>-{round(d,1)}h</b>"
                 
                 st.markdown(f"<div class='dia-caja' style='background-color:{c_bg};'>{txt}</div>", unsafe_allow_html=True)
                 if st.button("📝", key=f"btn{dia}"):
@@ -180,17 +191,20 @@ elif st.session_state.page == 'calendario':
             sal = st.text_input("Salida", f_act['hora_salida'] if f_act else "03:00")
             colb1, colb2 = st.columns(2)
             if colb1.form_submit_button("💾 GUARDAR"):
-                # Recalculamos al guardar para asegurar que a la DB va el dato correcto
+                # RECALCULAR ANTES DE GUARDAR
                 n, e, d = calcular_tiempos_exactos(ent, sal, h_c)
                 supabase.table("fichajes").delete().eq("empleado_id", id_t).eq("fecha_dia", f_dia).execute()
-                supabase.table("fichajes").insert({"empleado_id": id_t, "fecha_dia": f_dia, "hora_entrada": ent, "hora_salida": sal, "horas_normales": n, "horas_extras": e}).execute()
+                supabase.table("fichajes").insert({
+                    "empleado_id": id_t, "fecha_dia": f_dia, "hora_entrada": ent, "hora_salida": sal,
+                    "horas_normales": n, "horas_extras": e
+                }).execute()
                 del st.session_state.fichar; st.rerun()
             if colb2.form_submit_button("🗑️ BORRAR"):
                 supabase.table("fichajes").delete().eq("empleado_id", id_t).eq("fecha_dia", f_dia).execute()
                 del st.session_state.fichar; st.rerun()
 
+    # RESUMEN AL PIE
     st.markdown(f"""<div class='resumen-pie'>
-        <b>TOTAL MES:</b><br>
-        {round(total_n, 2)}h Normales | {round(total_e, 2)}h Extras<br>
-        <span style='color:red;'><b>Deuda total: {round(total_d, 2)}h</b></span>
+        <b>TOTALES {calendar.month_name[st.session_state.m].upper()}:</b><br>
+        {round(total_n, 1)}h Normales | {round(total_e, 1)}h Extras | <span style='color:red;'>Deuda: {round(total_d, 1)}h</span>
     </div>""", unsafe_allow_html=True)
