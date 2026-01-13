@@ -30,7 +30,7 @@ st.markdown(f"""
     </style>
     """, unsafe_allow_html=True)
 
-# --- LÓGICA DE TIEMPOS (CORTE DE MEDIANOCHE REAL) ---
+# --- LÓGICA DE TIEMPOS DEFINITIVA (CORTE DE MADRUGADA SIN DEUDA) ---
 def calcular_tiempos_finales(h_ent, h_sal, h_con, es_ultimo_dia):
     fmt = "%H:%M"
     try:
@@ -39,28 +39,29 @@ def calcular_tiempos_finales(h_ent, h_sal, h_con, es_ultimo_dia):
         if t2 <= t1: t2 += timedelta(days=1)
         
         total_h = (t2 - t1).total_seconds() / 3600
-        h_traspaso = 0.0
+        h_traspaso_extra = 0.0
         
         if es_ultimo_dia:
-            # Creamos la referencia de las 00:00 del día siguiente (el corte)
-            # t1.date() es 1900-01-01 por el strptime, así que sumamos 1 día para el corte
+            # Corte a las 00:00
             t_corte = datetime.strptime("00:00", fmt) + timedelta(days=1)
             
             if t1 < t_corte and t2 > t_corte:
-                # El turno cruza la medianoche: parte se queda, parte se va
                 h_este_mes = (t_corte - t1).total_seconds() / 3600
-                h_traspaso = total_h - h_este_mes
+                h_traspaso_extra = total_h - h_este_mes
                 total_h = h_este_mes
             elif t1 >= t_corte:
-                # El turno empezó después de las 00:00 (ya es el día 1 del mes siguiente)
-                h_traspaso = total_h
+                h_traspaso_extra = total_h
                 total_h = 0.0
-            # Si termina antes de las 00:00, total_h se queda igual y traspaso es 0
+            
+            # EL TRUCO: En el último día no generamos deuda (d=0)
+            n = min(total_h, h_con)
+            e = max(0.0, total_h - h_con)
+            return round(n, 1), round(e, 1), 0.0, round(h_traspaso_extra, 1)
             
         n = min(total_h, h_con)
         e = max(0.0, total_h - h_con)
         d = max(0.0, h_con - total_h)
-        return round(n, 1), round(e, 1), round(d, 1), round(h_traspaso, 1)
+        return round(n, 1), round(e, 1), round(d, 1), 0.0
     except: return 0.0, 0.0, 0.0, 0.0
 
 # --- NAVEGACIÓN ---
@@ -127,7 +128,6 @@ elif st.session_state.page == 'menu_alex':
                 supabase.table("dias_especiales").insert({"empleado_id": e_id, "fecha": str(f_star), "horas_contrato": h_star}).execute()
                 st.success("Estrella añadida")
     with tab3:
-        st.subheader("👁️ Visualizar Calendarios")
         c_v1, c_v2 = st.columns(2)
         if c_v1.button("Ver Calendario JANIRA", use_container_width=True):
             st.session_state.page = 'calendario'; st.session_state.user = 'Alex'; st.session_state.emp_id = 2; st.rerun()
@@ -154,13 +154,15 @@ elif st.session_state.page == 'calendario':
     # Traspaso anterior
     fecha_ant = datetime(st.session_state.a, st.session_state.m, 1) - timedelta(days=1)
     res_ant = supabase.table("fichajes").select("*").eq("empleado_id", id_t).eq("fecha_dia", fecha_ant.strftime("%Y-%m-%d")).execute()
-    traspaso_recibido = 0.0
+    traspaso_extra_recibido = 0.0
     if res_ant.data:
         f_ant = res_ant.data[0]
         res_s_ant = supabase.table("horarios_semanales").select("*").eq("empleado_id", id_t).eq("dia_semana", fecha_ant.weekday()).execute()
         h_con_ant = float(res_s_ant.data[0]['hora_inicio']) if res_s_ant.data else 5.0
-        _, _, _, traspaso_recibido = calcular_tiempos_finales(f_ant['hora_entrada'], f_ant['hora_salida'], h_con_ant, True)
-    if traspaso_recibido > 0: st.markdown(f"<div class='info-corte'>ℹ️ Tienes {traspaso_recibido}h de la madrugada del cierre anterior</div>", unsafe_allow_html=True)
+        _, _, _, traspaso_extra_recibido = calcular_tiempos_finales(f_ant['hora_entrada'], f_ant['hora_salida'], h_con_ant, True)
+
+    if traspaso_extra_recibido > 0:
+        st.markdown(f"<div class='info-corte'>ℹ️ Tienes {traspaso_extra_recibido}h EXTRAS del cierre del mes anterior</div>", unsafe_allow_html=True)
 
     # Datos
     res_f = supabase.table("fichajes").select("*").eq("empleado_id", id_t).gte("fecha_dia", f"{st.session_state.a}-{st.session_state.m:02d}-01").lte("fecha_dia", f"{st.session_state.a}-{st.session_state.m:02d}-{calendar.monthrange(st.session_state.a, st.session_state.m)[1]}").execute()
@@ -190,19 +192,20 @@ elif st.session_state.page == 'calendario':
                     n, b, d, trasp = calcular_tiempos_finales(f['hora_entrada'], f['hora_salida'], h_con, dia == ult_dia_m)
                     total_r += n; total_b += b; total_d += d
                     
-                    c_bg = "#F5B041" if d > 0 else ("#D4EFDF" if b == 0 else "#FADBD8")
-                    txt += f"<br><small>{f['hora_entrada']}-{f['hora_salida']}</small><br>{n}N/{b}E"
-                    if d > 0: txt += f"<br><b style='color:#C0392B;'>DEBES {d}h</b>"
-                    if trasp > 0: txt += f"<br><small style='color:blue;'>+{trasp}h ➔ SIG</small>"
+                    if dia == ult_dia_m:
+                        c_bg = "#AED6F1"; txt += f"<br><small>{f['hora_entrada']}-{f['hora_salida']}</small><br>➔ EXTRAS SIG"
+                    else:
+                        c_bg = "#F5B041" if d > 0 else ("#D4EFDF" if b == 0 else "#FADBD8")
+                        txt += f"<br><small>{f['hora_entrada']}-{f['hora_salida']}</small><br>{n}N/{b}E"
+                        if d > 0: txt += f"<br><b style='color:#C0392B;'>DEBES {d}h</b>"
                 st.markdown(f"<div class='dia-caja' style='background-color:{c_bg};'>{txt}</div>", unsafe_allow_html=True)
                 if not es_alex and st.button("📝", key=f"d{dia}"): st.session_state.fichar = (f_s, h_con, f); st.rerun()
 
     # RESUMEN FINAL
     st.markdown("---")
-    res_real = round(total_r + traspaso_recibido, 1)
     st.markdown(f"""<div class='resumen-pie'>
-        TOTAL MES: {res_real}h Realizadas + {total_d}h Debidas = {round(res_real + total_d, 1)}h NORMALES<br>
-        EXTRAS: {total_b}h Brutas - {total_d}h Debidas = {round(total_b - total_d, 1)}h NETAS
+        TOTAL MES: {round(total_r, 1)}h Realizadas + {total_d}h Debidas = {round(total_r + total_d, 1)}h NORMALES<br>
+        EXTRAS: {total_b + traspaso_extra_recibido}h Brutas - {total_d}h Debidas = {round(total_b + traspaso_extra_recibido - total_d, 1)}h NETAS
     </div>""", unsafe_allow_html=True)
 
     if 'fichar' in st.session_state and not es_alex:
