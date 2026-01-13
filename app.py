@@ -35,7 +35,6 @@ st.markdown(f"""
         border: 2px solid #5D6D7E !important;
         border-radius: 12px;
         font-weight: bold !important;
-        width: 100%;
     }}
     .dia-caja {{
         border: 1px solid #7FB3D5;
@@ -53,6 +52,7 @@ st.markdown(f"""
         border: 3px solid #5D6D7E;
         text-align: center;
         font-size: 22px;
+        color: black;
     }}
     </style>
     """, unsafe_allow_html=True)
@@ -63,11 +63,9 @@ def calcular_tiempos_exactos(h_ent, h_sal, h_contrato_decimal):
     try:
         t1 = datetime.strptime(h_ent, fmt)
         t2 = datetime.strptime(h_sal, fmt)
-        if t2 <= t1:
-            t2 += timedelta(days=1)
+        if t2 <= t1: t2 += timedelta(days=1)
         
-        minutos_trabajados = (t2 - t1).total_seconds() / 60
-        horas_trabajadas = minutos_trabajados / 60
+        horas_trabajadas = (t2 - t1).total_seconds() / 3600
         contrato = float(h_contrato_decimal)
         
         if horas_trabajadas >= contrato:
@@ -90,7 +88,8 @@ if st.session_state.page == 'inicio':
     _, col_centro, _ = st.columns([0.3, 2.4, 0.3])
     with col_centro:
         st.markdown('<div class="big-button">', unsafe_allow_html=True)
-        if st.button("🧔 PERFIL ALEX", key="alx", use_container_width=True): st.session_state.page = 'menu_alex'; st.rerun()
+        if st.button("🧔 PERFIL ALEX", key="alx", use_container_width=True): 
+            st.session_state.page = 'menu_alex'; st.rerun()
         if st.button("👩‍🦰 PERFIL JANIRA", key="jan", use_container_width=True):
             st.session_state.page = 'calendario'; st.session_state.user = 'Janira'; st.session_state.emp_id = 2; st.rerun()
         if st.button("👩‍🦳 PERFIL IRIA", key="iri", use_container_width=True):
@@ -124,6 +123,7 @@ elif st.session_state.page == 'calendario':
     id_t = st.session_state.emp_id
     st.markdown(f"<style>.stApp {{ background-color: {COLOR_JANI if id_t==2 else COLOR_IRIA}; }}</style>", unsafe_allow_html=True)
     
+    # Navegación
     c1, c2, c3 = st.columns([1, 2, 1])
     if c1.button("◀ MES"):
         st.session_state.m -= 1
@@ -136,6 +136,7 @@ elif st.session_state.page == 'calendario':
     with c2: st.markdown(f"<h2 style='text-align:center;'>{calendar.month_name[st.session_state.m].upper()} {st.session_state.a}</h2>", unsafe_allow_html=True)
     if st.button("🏠 INICIO"): st.session_state.page = 'inicio'; st.rerun()
 
+    # Cargar datos
     res_f = supabase.table("fichajes").select("*").eq("empleado_id", id_t).execute()
     df_f = pd.DataFrame(res_f.data) if res_f.data else pd.DataFrame()
     res_s = supabase.table("horarios_semanales").select("*").eq("empleado_id", id_t).execute()
@@ -153,12 +154,15 @@ elif st.session_state.page == 'calendario':
             f_s = f"{st.session_state.a}-{st.session_state.m:02d}-{dia:02d}"
             f_dt = datetime(st.session_state.a, st.session_state.m, dia)
             h_con = base_h.get(f_dt.weekday(), 5.0)
-            f = df_f[df_f['fecha_dia'] == f_s].iloc[0] if not df_f.empty and not df_f[df_f['fecha_dia'] == f_s].empty else None
+            
+            # Buscar fichaje existente
+            f_row = df_f[df_f['fecha_dia'] == f_s]
+            f = f_row.iloc[0].to_dict() if not f_row.empty else None
             
             with cols[i]:
                 c_bg = "white"
                 txt = f"<b>{dia}</b>"
-                if f is not None:
+                if f:
                     n, e, d = calcular_tiempos_exactos(f['hora_entrada'], f['hora_salida'], h_con)
                     total_n += n; total_e += e; total_d += d
                     c_bg = "#D4EFDF" if e == 0 else "#FADBD8"
@@ -170,26 +174,30 @@ elif st.session_state.page == 'calendario':
                     st.session_state.fichar = (f_s, h_con, f)
                     st.rerun()
 
-    # --- FORMULARIO DE FICHAJE CORREGIDO ---
+    # Formulario
     if 'fichar' in st.session_state:
         f_dia, h_c, f_act = st.session_state.fichar
-        st.write(f"### Gestionar día {f_dia} (Contrato: {h_c}h)")
+        st.write(f"### Gestionar día {f_dia}")
         
-        # Usamos columnas fuera del form para los botones de acción si queremos evitar el error
         with st.form("form_fichaje"):
-            ent = st.text_input("Hora Entrada", f_act['hora_entrada'] if f_act else "22:00")
-            sal = st.text_input("Hora Salida", f_act['hora_salida'] if f_act else "03:00")
+            # Arreglo de la línea que fallaba:
+            ent_def = f_act['hora_entrada'] if f_act else "22:00"
+            sal_def = f_act['hora_salida'] if f_act else "03:00"
             
-            col1, col2 = st.columns(2)
-            with col1:
-                btn_save = st.form_submit_button("💾 GUARDAR / MODIFICAR")
-            with col2:
-                btn_del = st.form_submit_button("🗑️ BORRAR TURNO")
+            ent = st.text_input("Hora Entrada", ent_def)
+            sal = st.text_input("Hora Salida", sal_def)
+            
+            c1, c2 = st.columns(2)
+            btn_save = c1.form_submit_button("💾 GUARDAR")
+            btn_del = c2.form_submit_button("🗑️ BORRAR")
 
             if btn_save:
                 n, e, d = calcular_tiempos_exactos(ent, sal, h_c)
                 supabase.table("fichajes").delete().eq("empleado_id", id_t).eq("fecha_dia", f_dia).execute()
-                supabase.table("fichajes").insert({"empleado_id": id_t, "fecha_dia": f_dia, "hora_entrada": ent, "hora_salida": sal, "horas_normales": n, "horas_extras": e}).execute()
+                supabase.table("fichajes").insert({
+                    "empleado_id": id_t, "fecha_dia": f_dia, "hora_entrada": ent, 
+                    "hora_salida": sal, "horas_normales": n, "horas_extras": e
+                }).execute()
                 del st.session_state.fichar; st.rerun()
                 
             if btn_del:
