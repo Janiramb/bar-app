@@ -41,7 +41,7 @@ st.markdown(f"""
         padding: 8px;
         border-radius: 8px;
         text-align: center;
-        min-height: 100px;
+        min-height: 105px;
         background-color: white;
         color: black;
     }}
@@ -56,28 +56,28 @@ st.markdown(f"""
     </style>
     """, unsafe_allow_html=True)
 
-# --- LÓGICA DE CÁLCULO MEJORADA ---
-def calcular_tiempos(h_ent, h_sal, h_contrato):
+# --- LÓGICA DE CÁLCULO DE PRECISIÓN ---
+def calcular_tiempos_exactos(h_ent, h_sal, h_contrato):
     fmt = "%H:%M"
     try:
         t1 = datetime.strptime(h_ent, fmt)
         t2 = datetime.strptime(h_sal, fmt)
         
-        # Si la salida es antes que la entrada, es que ha pasado la medianoche
         if t2 <= t1:
             t2 += timedelta(days=1)
         
-        # Horas totales trabajadas
-        total_segundos = (t2 - t1).total_seconds()
-        total_trabajado = total_segundos / 3600 # Convertimos a decimal (ej: 5.0)
+        # Calculamos la diferencia total en MINUTOS para evitar errores de coma flotante
+        diferencia = t2 - t1
+        minutos_totales = diferencia.total_seconds() / 60
+        horas_totales = minutos_totales / 60  # Ej: 300 min / 60 = 5.0 horas
         
-        # Reparto de horas
-        norm = min(total_trabajado, h_contrato)
-        extra = max(0.0, total_trabajado - h_contrato)
-        deuda = max(0.0, h_contrato - total_trabajado)
+        # Reparto basado en el contrato de Alex (h_contrato ya viene en formato decimal, ej: 3.5)
+        norm = min(horas_totales, h_contrato)
+        extra = max(0.0, horas_totales - h_contrato)
+        deuda = max(0.0, h_contrato - horas_totales)
         
         return round(norm, 2), round(extra, 2), round(deuda, 2)
-    except Exception as e:
+    except:
         return 0.0, 0.0, 0.0
 
 # --- NAVEGACIÓN ---
@@ -85,9 +85,9 @@ if 'page' not in st.session_state: st.session_state.page = 'inicio'
 if 'm' not in st.session_state: st.session_state.m = datetime.now().month
 if 'a' not in st.session_state: st.session_state.a = datetime.now().year
 
-# --- PANTALLA 1: INICIO ---
+# --- PANTALLAS (INICIO Y ALEX) ---
 if st.session_state.page == 'inicio':
-    st.markdown("<h1 style='text-align:center;'>🍺 HORARIO DESASTRE</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align:center; font-size: 55px; padding-bottom: 30px;'>🍺 HORARIO DESASTRE</h1>", unsafe_allow_html=True)
     _, col_centro, _ = st.columns([0.3, 2.4, 0.3])
     with col_centro:
         st.markdown('<div class="big-button">', unsafe_allow_html=True)
@@ -98,34 +98,30 @@ if st.session_state.page == 'inicio':
             st.session_state.page = 'calendario'; st.session_state.user = 'Iria'; st.session_state.emp_id = 3; st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
-# --- PANTALLA 2: MENU ALEX ---
 elif st.session_state.page == 'menu_alex':
     st.markdown(f"<style>.stApp {{ background-color: {COLOR_ALEX}; }}</style>", unsafe_allow_html=True)
     if st.button("◀ VOLVER"): st.session_state.page = 'inicio'; st.rerun()
-    st.title("⚙️ Configuración de Contratos")
-    st.info("Alex, aquí pones las horas que deben hacer por contrato cada día (ej: 3.5 para 3h 30min)")
-    
+    st.title("⚙️ Configuración de Horarios Base")
     dias_n = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
     cj, ci = st.columns(2)
-    
     with cj:
-        st.subheader("👩‍🦰 Horas JANIRA")
+        st.subheader("👩‍🦰 Contrato JANIRA")
         with st.form("fj"):
             hj = [st.number_input(f"{d}", value=5.0, step=0.1, key=f"j{i}") for i, d in enumerate(dias_n)]
-            if st.form_submit_button("GUARDAR CONTRATO JANIRA"):
+            if st.form_submit_button("GUARDAR JANIRA"):
                 for i, v in enumerate(hj):
                     supabase.table("horarios_semanales").upsert({"empleado_id": 2, "dia_semana": i, "hora_inicio": str(v)}).execute()
-                st.success("Guardado correctamente")
+                st.success("Guardado")
     with ci:
-        st.subheader("👩‍🦳 Horas IRIA")
+        st.subheader("👩‍🦳 Contrato IRIA")
         with st.form("fi"):
             hi = [st.number_input(f"{d}", value=5.0, step=0.1, key=f"i{i}") for i, d in enumerate(dias_n)]
-            if st.form_submit_button("GUARDAR CONTRATO IRIA"):
+            if st.form_submit_button("GUARDAR IRIA"):
                 for i, v in enumerate(hi):
                     supabase.table("horarios_semanales").upsert({"empleado_id": 3, "dia_semana": i, "hora_inicio": str(v)}).execute()
-                st.success("Guardado correctamente")
+                st.success("Guardado")
 
-# --- PANTALLA 3: CALENDARIO ---
+# --- PANTALLA CALENDARIO ---
 elif st.session_state.page == 'calendario':
     id_t = st.session_state.emp_id
     st.markdown(f"<style>.stApp {{ background-color: {COLOR_JANI if id_t==2 else COLOR_IRIA}; }}</style>", unsafe_allow_html=True)
@@ -164,7 +160,8 @@ elif st.session_state.page == 'calendario':
                 c_bg = "white"
                 txt = f"<b>{dia}</b>"
                 if f is not None:
-                    n, e, d = calcular_tiempos(f['hora_entrada'], f['hora_salida'], h_con)
+                    # USAMOS LA NUEVA FUNCIÓN DE PRECISIÓN
+                    n, e, d = calcular_tiempos_exactos(f['hora_entrada'], f['hora_salida'], h_con)
                     total_n += n; total_e += e; total_d += d
                     c_bg = "#D4EFDF" if e == 0 else "#FADBD8"
                     txt += f"<br><small>{f['hora_entrada']}-{f['hora_salida']}</small><br>{n}N/{e}E"
@@ -179,11 +176,12 @@ elif st.session_state.page == 'calendario':
         f_dia, h_c, f_act = st.session_state.fichar
         with st.form("f_fichar"):
             st.write(f"Día {f_dia} (Contrato: {h_c}h)")
-            ent = st.text_input("Entrada (HH:MM)", f_act['hora_entrada'] if f_act else "22:00")
-            sal = st.text_input("Salida (HH:MM)", f_act['hora_salida'] if f_act else "03:00")
+            ent = st.text_input("Entrada", f_act['hora_entrada'] if f_act else "22:00")
+            sal = st.text_input("Salida", f_act['hora_salida'] if f_act else "03:00")
             colb1, colb2 = st.columns(2)
             if colb1.form_submit_button("💾 GUARDAR"):
-                n, e, d = calcular_tiempos(ent, sal, h_c)
+                # Recalculamos al guardar para asegurar que a la DB va el dato correcto
+                n, e, d = calcular_tiempos_exactos(ent, sal, h_c)
                 supabase.table("fichajes").delete().eq("empleado_id", id_t).eq("fecha_dia", f_dia).execute()
                 supabase.table("fichajes").insert({"empleado_id": id_t, "fecha_dia": f_dia, "hora_entrada": ent, "hora_salida": sal, "horas_normales": n, "horas_extras": e}).execute()
                 del st.session_state.fichar; st.rerun()
