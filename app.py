@@ -32,41 +32,44 @@ st.markdown(f"""
 
 # --- LÓGICA DE TIEMPOS MINUCIOSA ---
 def calcular_tiempos_v2(h_ent, h_sal, h_con, es_ultimo_dia):
-    """
-    Lógica de corte: 
-    - Si es último día, las horas post-medianoche van a h_traspaso.
-    - Si NO es último día, se suma todo al total del día.
-    - El contrato (h_con) se resta del total acumulado ese día.
-    """
     fmt = "%H:%M"
     try:
         t_ent = datetime.strptime(h_ent, fmt)
         t_sal = datetime.strptime(h_sal, fmt)
         
+        # 1. Calcular horas totales y detectar si pasa de medianoche
         pasa_medianoche = t_sal <= t_ent
         
         if not pasa_medianoche:
-            total_h = (t_sal - t_ent).total_seconds() / 3600
-            h_hoy = total_h
-            h_traspaso = 0.0
+            h_dentro_del_dia = (t_sal - t_ent).total_seconds() / 3600
+            h_traspaso_sig_mes = 0.0
         else:
-            t_medianoche = datetime.strptime("23:59", fmt) + timedelta(minutes=1)
-            h_hoy = (t_medianoche - t_ent).total_seconds() / 3600
-            h_traspaso = (t_sal - datetime.strptime("00:00", fmt)).total_seconds() / 3600
+            # Horas hasta las 24:00 (Fin del día actual)
+            t_fin_dia = datetime.strptime("23:59", fmt) + timedelta(minutes=1)
+            h_dentro_del_dia = (t_fin_dia - t_ent).total_seconds() / 3600
+            # Horas desde las 00:00 (Inicio del día siguiente)
+            h_traspaso_sig_mes = (t_sal - datetime.strptime("00:00", fmt)).total_seconds() / 3600
 
-        if not es_ultimo_dia:
-            # Caso normal: todo cuenta para hoy
-            total_final = h_hoy + h_traspaso
-            h_traspaso = 0.0
+        # 2. LÓGICA DE FIN DE MES:
+        # Si es el último día, las horas que pasan de las 00:00 NO cuentan para hoy.
+        if es_ultimo_dia:
+            # Para el resumen de hoy, solo usamos lo que se trabajó antes de las 12
+            total_para_hoy = h_dentro_del_dia
+            # El traspaso se queda como valor para el mes que viene
+            traspaso_final = h_traspaso_sig_mes
         else:
-            # Caso fin de mes: h_hoy cuenta para el resumen, h_traspaso vuela al mes siguiente
-            total_final = h_hoy
+            # Si no es fin de mes, todo cuenta para el cálculo de hoy
+            total_para_hoy = h_dentro_del_dia + h_traspaso_sig_mes
+            traspaso_final = 0.0
 
-        n = min(total_final, h_con)
-        e = max(0.0, total_final - h_con)
-        d = max(0.0, h_con - total_final)
+        # 3. Comparar lo que se queda hoy contra el contrato
+        # (Si el turno del 31 empezó a las 00:30, total_para_hoy será 0, 
+        # por lo que el sistema dirá que DEBES las horas de contrato de ese día)
+        n = min(total_para_hoy, h_con)
+        e = max(0.0, total_para_hoy - h_con)
+        d = max(0.0, h_con - total_para_hoy)
         
-        return round(n, 1), round(e, 1), round(d, 1), round(h_traspaso, 1)
+        return round(n, 1), round(e, 1), round(d, 1), round(traspaso_final, 1)
     except:
         return 0.0, 0.0, 0.0, 0.0
 
@@ -242,3 +245,4 @@ elif st.session_state.page == 'calendario':
                 del st.session_state.fichar; st.rerun()
             if b3.form_submit_button("❌ CERRAR"):
                 del st.session_state.fichar; st.rerun()
+
