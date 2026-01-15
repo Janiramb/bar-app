@@ -13,10 +13,10 @@ key = "sb_publishable_aV6LrJVsVo2a_129xBbNdw_TSO_7pDz"
 supabase = create_client(url, key)
 
 # --- COLORES ---
-COLOR_FONDO_BASE = "#A2D9CE"
-COLOR_ALEX = "#FADBD8"
-COLOR_JANI = "#FCF3CF"
-COLOR_IRIA = "#EBDEF0"
+COLOR_FONDO_BASE = "#4AED5D"
+COLOR_ALEX = "#FF4A38"
+COLOR_JANI = "#FCD844"
+COLOR_IRIA = " #BC7AFA"
 
 # --- ESTILOS CSS ---
 st.markdown(f"""
@@ -78,10 +78,10 @@ if st.session_state.page == 'inicio':
     _, col_centro, _ = st.columns([0.5, 2, 0.5])
     with col_centro:
         st.markdown('<div class="big-button">', unsafe_allow_html=True)
-        if st.button("🧔 PERFIL ALEX", use_container_width=True): st.session_state.page = 'menu_alex'; st.rerun()
-        if st.button("👩‍🦰 PERFIL JANIRA", use_container_width=True):
+        if st.button("ALEX", use_container_width=True): st.session_state.page = 'menu_alex'; st.rerun()
+        if st.button("JANI", use_container_width=True):
             st.session_state.page = 'calendario'; st.session_state.user = 'Janira'; st.session_state.emp_id = 2; st.rerun()
-        if st.button("👩‍🦳 PERFIL IRIA", use_container_width=True):
+        if st.button("IRIA", use_container_width=True):
             st.session_state.page = 'calendario'; st.session_state.user = 'Iria'; st.session_state.emp_id = 3; st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
@@ -100,7 +100,7 @@ elif st.session_state.page == 'menu_alex':
         dias_n = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
         
         c1, c2 = st.columns(2)
-        for eid, col, nom in [(2, c1, "👩‍🦰 JANIRA"), (3, c2, "👩‍🦳 IRIA")]:
+        for eid, col, nom in [(2, c1, "JANI"), (3, c2, "IRIA")]:
             with col:
                 st.subheader(nom)
                 if not df_base.empty:
@@ -240,3 +240,4 @@ elif st.session_state.page == 'calendario':
             if st.form_submit_button("BORRAR"):
                 supabase.table("fichajes").delete().eq("empleado_id", id_t).eq("fecha_dia", fd).execute()
                 del st.session_state.fichar; st.rerun()
+
