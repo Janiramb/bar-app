@@ -113,11 +113,10 @@ elif st.session_state.page == 'menu_alex':
         with st.form("f_star"):
             e_id = st.selectbox("Empleado", [2, 3], format_func=lambda x: "Janira" if x==2 else "Iria")
             f_star = st.date_input("Fecha Especial")
-            h_star = st.number_input("Horas Contrato (Sustituye a las base)", value=8.0, step=0.5)
+            h_star = st.number_input("Horas Contrato", value=8.0, step=0.5)
             if st.form_submit_button("GUARDAR ESTRELLA"):
-                supabase.table("dias_especiales").delete().eq("empleado_id", e_id).eq("fecha", str(f_star)).execute()
                 supabase.table("dias_especiales").insert({"empleado_id": e_id, "fecha": str(f_star), "horas_contrato": h_star}).execute()
-                st.success("Estrella añadida (Sustituye el horario base de ese día)")
+                st.success("Estrella añadida")
 
     with tab3:
         c_v1, c_v2 = st.columns(2)
@@ -172,14 +171,8 @@ elif st.session_state.page == 'calendario':
         for i, dia in enumerate(sem):
             if dia == 0: continue
             f_s = f"{st.session_state.a}-{st.session_state.m:02d}-{dia:02d}"
-            
-            # LÓGICA DE PRIORIDAD: Si hay día estrella, se ignora el base
             esp = df_e[df_e['fecha'] == f_s].iloc[0] if not df_e.empty and not df_e[df_e['fecha'] == f_s].empty else None
-            if esp is not None:
-                h_con = esp['horas_contrato']
-            else:
-                h_con = base_h.get(datetime(st.session_state.a, st.session_state.m, dia).weekday(), 5.0)
-            
+            h_con = esp['horas_contrato'] if esp is not None else base_h.get(datetime(st.session_state.a, st.session_state.m, dia).weekday(), 5.0)
             total_con_mes += h_con
             f = df_f[df_f['fecha_dia'] == f_s].iloc[0].to_dict() if not df_f.empty and not df_f[df_f['fecha_dia'] == f_s].empty else None
             
@@ -198,7 +191,7 @@ elif st.session_state.page == 'calendario':
                 st.markdown(f"<div class='dia-caja' style='background-color:{c_bg};'>{txt}</div>", unsafe_allow_html=True)
                 if not es_alex and st.button("📝", key=f"d{dia}"): st.session_state.fichar = (f_s, h_con, f); st.rerun()
 
-    # --- RESUMEN FINAL ---
+    # --- RESUMEN FINAL CORREGIDO ---
     real_tot = total_real_mes + traspaso_recibido
     balance = real_tot - total_con_mes
     if balance >= 0:
@@ -212,7 +205,7 @@ elif st.session_state.page == 'calendario':
 
     st.markdown("---")
     st.markdown(f"""<div class='resumen-pie'>
-        CONTRATO MES: {round(total_con_mes, 1)}h | TRABAJADAS: {round(real_tot, 1)}h<br>
+        CONTRATO: {round(total_con_mes, 1)}h | TRABAJADAS: {round(real_tot, 1)}h<br>
         RESULTADO: {round(deuda_f, 1)}h Debidas Finales | {round(ext_net, 1)}h Extras Netas
     </div>""", unsafe_allow_html=True)
 
