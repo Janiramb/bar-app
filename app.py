@@ -29,23 +29,20 @@ st.markdown(f"""
     </style>
     """, unsafe_allow_html=True)
 
-# --- LÓGICA DE TIEMPOS MAESTRA (CON DIFERENCIACIÓN DE EXTRAS EN TRASPASO) ---
+# --- LÓGICA DE TIEMPOS MAESTRA ---
 def calcular_tiempos_v2(h_ent, h_sal, h_con, es_ultimo_dia):
     fmt = "%H:%M"
     try:
         t_ent = datetime.strptime(h_ent, fmt)
         t_sal = datetime.strptime(h_sal, fmt)
         
-        # 1. Duración total de la jornada
         if t_sal <= t_ent:
             total_jornada = ((t_sal + timedelta(days=1)) - t_ent).total_seconds() / 3600
-            # Cuánto de esa jornada ocurre antes de las 00:00
             t_limite = datetime.strptime("23:59", fmt) + timedelta(minutes=1)
             h_antes_12 = (t_limite - t_ent).total_seconds() / 3600
             h_despues_12 = total_jornada - h_antes_12
         else:
             total_jornada = (t_sal - t_ent).total_seconds() / 3600
-            # Si el turno empieza después de las 00:00 (ej: 00:30 del día 31)
             if t_ent < datetime.strptime("12:00", fmt):
                 h_antes_12 = 0.0
                 h_despues_12 = total_jornada
@@ -53,28 +50,17 @@ def calcular_tiempos_v2(h_ent, h_sal, h_con, es_ultimo_dia):
                 h_antes_12 = total_jornada
                 h_despues_12 = 0.0
 
-        # 2. Clasificación de la jornada total (Normales vs Extras totales)
         n_totales = min(total_jornada, h_con)
         e_totales = max(0.0, total_jornada - h_con)
         deuda = max(0.0, h_con - total_jornada)
 
         if es_ultimo_dia:
-            # Repartimos las normales y extras proporcionalmente o por orden cronológico
-            # Lógica: Las primeras horas son normales, las últimas son extras.
-            
-            # Horas normales que se quedan en diciembre
-            n_diciembre = min(h_antes_12, n_totales)
-            # Horas extras que se quedan en diciembre
-            e_diciembre = max(0.0, h_antes_12 - n_totales)
-            
-            # Lo que sobra pasa a enero manteniendo su tipo
-            n_enero = n_totales - n_diciembre
-            e_enero = e_totales - e_diciembre
-            
-            # Retornamos: (N dic, E dic, Deuda, N enero, E enero)
-            return round(n_diciembre, 1), round(e_diciembre, 1), round(deuda, 1), round(n_enero, 1), round(e_enero, 1)
+            n_dic = min(h_antes_12, n_totales)
+            e_dic = max(0.0, h_antes_12 - n_totales)
+            n_ene = n_totales - n_dic
+            e_ene = e_totales - e_dic
+            return round(n_dic, 1), round(e_dic, 1), round(deuda, 1), round(n_ene, 1), round(e_ene, 1)
         else:
-            # Día normal: No hay traspaso detallado
             return round(n_totales, 1), round(e_totales, 1), round(deuda, 1), 0.0, 0.0
     except:
         return 0.0, 0.0, 0.0, 0.0, 0.0
@@ -90,46 +76,76 @@ if st.session_state.page == 'inicio':
     _, col_centro, _ = st.columns([0.5, 2, 0.5])
     with col_centro:
         st.markdown('<div class="big-button">', unsafe_allow_html=True)
-        if st.button("🧔 PERFIL ALEX", key="alx", use_container_width=True): st.session_state.page = 'menu_alex'; st.rerun()
-        if st.button("👩‍🦰 PERFIL JANIRA", key="jan", use_container_width=True):
+        if st.button("🧔 PERFIL ALEX", use_container_width=True): st.session_state.page = 'menu_alex'; st.rerun()
+        if st.button("👩‍🦰 PERFIL JANIRA", use_container_width=True):
             st.session_state.page = 'calendario'; st.session_state.user = 'Janira'; st.session_state.emp_id = 2; st.rerun()
-        if st.button("👩‍🦳 PERFIL IRIA", key="iri", use_container_width=True):
+        if st.button("👩‍🦳 PERFIL IRIA", use_container_width=True):
             st.session_state.page = 'calendario'; st.session_state.user = 'Iria'; st.session_state.emp_id = 3; st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
-# --- PANTALLA ALEX (GESTIÓN) ---
+# --- PANTALLA ALEX (GESTIÓN MEJORADA) ---
 elif st.session_state.page == 'menu_alex':
     st.markdown(f"<style>.stApp {{ background-color: {COLOR_ALEX}; }}</style>", unsafe_allow_html=True)
     if st.button("◀ VOLVER"): st.session_state.page = 'inicio'; st.rerun()
     st.title("⚙️ Gestión de Alex")
-    tab1, tab2, tab3 = st.tabs(["📅 Horarios Base", "🌟 Días Estrella", "👁️ Ver Calendarios"])
+    
+    tab1, tab2, tab3 = st.tabs(["📅 Horarios Base Guardados", "🌟 Días Estrella Registrados", "👁️ Ver Calendarios"])
+    
     with tab1:
+        st.subheader("Configuración Actual de Horarios Base")
+        res_b = supabase.table("horarios_semanales").select("*").execute()
+        df_base = pd.DataFrame(res_b.data) if res_b.data else pd.DataFrame()
         dias_n = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+        
         c1, c2 = st.columns(2)
         for eid, col, nom in [(2, c1, "JANIRA"), (3, c2, "IRIA")]:
             with col:
-                st.subheader(nom)
-                with st.form(f"fb_{eid}"):
-                    hb = [st.number_input(f"{d}", value=5.0, step=0.5, key=f"b{eid}{i}") for i, d in enumerate(dias_n)]
-                    if st.form_submit_button(f"GUARDAR {nom}"):
-                        supabase.table("horarios_semanales").delete().eq("empleado_id", eid).execute()
-                        for i, v in enumerate(hb): supabase.table("horarios_semanales").insert({"empleado_id": eid, "dia_semana": i, "hora_inicio": str(v)}).execute()
-                        st.success("Guardado")
+                st.markdown(f"### {nom}")
+                if not df_base.empty:
+                    temp_df = df_base[df_base['empleado_id'] == eid].copy()
+                    if not temp_df.empty:
+                        temp_df['Día'] = temp_df['dia_semana'].apply(lambda x: dias_n[int(x)])
+                        st.table(temp_df.sort_values('dia_semana')[['Día', 'hora_inicio']])
+                
+                with st.expander(f"Editar Horario Base de {nom}"):
+                    with st.form(f"fb_{eid}"):
+                        hb = [st.number_input(f"{d}", value=5.0, step=0.5, key=f"b{eid}{i}") for i, d in enumerate(dias_n)]
+                        if st.form_submit_button("GUARDAR NUEVO HORARIO"):
+                            supabase.table("horarios_semanales").delete().eq("empleado_id", eid).execute()
+                            for i, v in enumerate(hb): supabase.table("horarios_semanales").insert({"empleado_id": eid, "dia_semana": i, "hora_inicio": str(v)}).execute()
+                            st.rerun()
+
     with tab2:
-        st.subheader("Configurar Día Estrella ★")
-        with st.form("fs"):
+        st.subheader("Listado de Días Estrella Registrados")
+        res_e = supabase.table("dias_especiales").select("*").execute()
+        if res_e.data:
+            df_e_list = pd.DataFrame(res_e.data)
+            df_e_list['Empleado'] = df_e_list['empleado_id'].apply(lambda x: "Janira" if x == 2 else "Iria")
+            st.dataframe(df_e_list[['fecha', 'Empleado', 'horas_contrato']], use_container_width=True)
+            
+            del_id = st.selectbox("Selecciona fecha para eliminar estrella", df_e_list['fecha'].unique())
+            if st.button("Eliminar Estrella Seleccionada"):
+                supabase.table("dias_especiales").delete().eq("fecha", del_id).execute()
+                st.rerun()
+        else:
+            st.write("No hay días estrella marcados.")
+
+        st.markdown("---")
+        st.subheader("Añadir Nuevo Día Estrella ★")
+        with st.form("fs_new"):
             e_id = st.selectbox("Empleado", [2, 3], format_func=lambda x: "Janira" if x==2 else "Iria")
             f_star = st.date_input("Fecha")
             h_star = st.number_input("Contrato Estrella (horas)", value=6.0, step=0.5)
-            if st.form_submit_button("FIJAR ESTRELLA"):
+            if st.form_submit_button("REGISTRAR ESTRELLA"):
                 supabase.table("dias_especiales").upsert({"empleado_id": e_id, "fecha": str(f_star), "horas_contrato": h_star}).execute()
-                st.success("Estrella guardada")
+                st.rerun()
+
     with tab3:
         cv1, cv2 = st.columns(2)
         if cv1.button("CALENDARIO JANIRA", use_container_width=True): st.session_state.page = 'calendario'; st.session_state.user = 'Alex'; st.session_state.emp_id = 2; st.rerun()
         if cv2.button("CALENDARIO IRIA", use_container_width=True): st.session_state.page = 'calendario'; st.session_state.user = 'Alex'; st.session_state.emp_id = 3; st.rerun()
 
-# --- PANTALLA CALENDARIO ---
+# --- PANTALLA CALENDARIO (MANTIENE LÓGICA DE TRASPASO DETALLADA) ---
 elif st.session_state.page == 'calendario':
     es_alex = (st.session_state.user == 'Alex')
     id_t = st.session_state.emp_id
@@ -147,28 +163,26 @@ elif st.session_state.page == 'calendario':
     with c2: st.markdown(f"<h2 style='text-align:center;'>{calendar.month_name[st.session_state.m].upper()} {st.session_state.a}</h2>", unsafe_allow_html=True)
     if st.button("🏠"): st.session_state.page = 'inicio'; st.rerun()
 
-    # --- TRASPASO RECIBIDO (DETALLADO) ---
     f_ant = datetime(st.session_state.a, st.session_state.m, 1) - timedelta(days=1)
     r_ant = supabase.table("fichajes").select("*").eq("empleado_id", id_t).eq("fecha_dia", f_ant.strftime("%Y-%m-%d")).execute()
-    n_recibidas, e_recibidas = 0.0, 0.0
-    
+    n_rec, e_rec = 0.0, 0.0
     if r_ant.data:
         fa = r_ant.data[0]
         re_a = supabase.table("dias_especiales").select("*").eq("empleado_id", id_t).eq("fecha", f_ant.strftime("%Y-%m-%d")).execute()
         ha = float(re_a.data[0]['horas_contrato']) if re_a.data else 5.0
-        _, _, _, n_recibidas, e_recibidas = calcular_tiempos_v2(fa['hora_entrada'], fa['hora_salida'], ha, True)
+        _, _, _, n_rec, e_rec = calcular_tiempos_v2(fa['hora_entrada'], fa['hora_salida'], ha, True)
     
-    if (n_recibidas + e_recibidas) > 0:
-        st.markdown(f"<div class='resumen-pie' style='font-size:16px; margin-bottom:10px;'>ℹ️ Recibidas del mes anterior: <b>{n_recibidas}h Normales</b> y <b>{e_recibidas}h Extras</b></div>", unsafe_allow_html=True)
+    if (n_rec + e_rec) > 0:
+        st.info(f"ℹ️ Recibidas del mes pasado: {n_rec}h Normales y {e_rec}h Extras")
 
-    # Carga Datos
     r_f = supabase.table("fichajes").select("*").eq("empleado_id", id_t).gte("fecha_dia", f"{st.session_state.a}-{st.session_state.m:02d}-01").lte("fecha_dia", f"{st.session_state.a}-{st.session_state.m:02d}-{calendar.monthrange(st.session_state.a, st.session_state.m)[1]}").execute()
     df_f = pd.DataFrame(r_f.data) if r_f.data else pd.DataFrame()
-    base_h = {int(i['dia_semana']): float(i['hora_inicio']) for i in (supabase.table("horarios_semanales").select("*").eq("empleado_id", id_t).execute()).data}
-    df_e = pd.DataFrame((supabase.table("dias_especiales").select("*").eq("empleado_id", id_t).execute()).data)
+    r_s = supabase.table("horarios_semanales").select("*").eq("empleado_id", id_t).execute()
+    base_h = {int(i['dia_semana']): float(i['hora_inicio']) for i in r_s.data}
+    r_e = supabase.table("dias_especiales").select("*").eq("empleado_id", id_t).execute()
+    df_e = pd.DataFrame(r_e.data) if r_e.data else pd.DataFrame()
 
-    total_n_dic, total_e_dic, total_d_dic = 0.0, 0.0, 0.0
-    n_enviadas_jan, e_enviadas_jan = 0.0, 0.0
+    t_n_dic, t_e_dic, t_d_dic = 0.0, 0.0, 0.0
     cal = calendar.monthcalendar(st.session_state.a, st.session_state.m)
     ult_dia = calendar.monthrange(st.session_state.a, st.session_state.m)[1]
 
@@ -185,27 +199,22 @@ elif st.session_state.page == 'calendario':
                 txt = f"<b>{dia}{' ★' if esp is not None else ''}</b>"
                 bg = "white"
                 if f:
-                    es_u = (dia == ult_dia)
-                    nd, ed, dd, ne, ee = calcular_tiempos_v2(f['hora_entrada'], f['hora_salida'], hc, es_u)
-                    
-                    total_n_dic += nd; total_e_dic += ed; total_d_dic += dd
-                    if es_u: n_enviadas_jan = ne; e_enviadas_jan = ee
-                    
-                    bg = "#AED6F1" if (es_u and (ne+ee) > 0) else ("#F5B041" if dd > 0 else ("#D4EFDF" if ed == 0 else "#FADBD8"))
+                    nd, ed, dd, ne, ee = calcular_tiempos_v2(f['hora_entrada'], f['hora_salida'], hc, dia == ult_dia)
+                    t_n_dic += nd; t_e_dic += ed; t_d_dic += dd
+                    bg = "#AED6F1" if (dia == ult_dia and (ne+ee) > 0) else ("#F5B041" if dd > 0 else ("#D4EFDF" if ed == 0 else "#FADBD8"))
                     txt += f"<br><small>{f['hora_entrada']}-{f['hora_salida']}</small><br>{nd}N / {ed}E"
                     if dd > 0: txt += f"<br><b style='color:#C0392B;'>{dd}h DEBE</b>"
-                    if es_u and (ne+ee) > 0: txt += f"<br><b style='color:#1B4F72;'>➔ {ne}N + {ee}E</b>"
+                    if dia == ult_dia and (ne+ee) > 0: txt += f"<br><b style='color:#1B4F72;'>➔ {ne}N + {ee}E</b>"
 
                 st.markdown(f"<div class='dia-caja' style='background-color:{bg};'>{txt}</div>", unsafe_allow_html=True)
                 if not es_alex and st.button("📝", key=f"f{dia}"): st.session_state.fichar = (fs, hc, f); st.rerun()
 
-    # --- RESUMEN FINAL ---
     st.markdown("---")
-    real_n = round(total_n_dic + n_recibidas, 1)
-    real_e = round(total_e_dic + e_recibidas, 1)
+    r_n = round(t_n_dic + n_rec, 1)
+    r_e = round(t_e_dic + e_rec, 1)
     st.markdown(f"""<div class='resumen-pie'>
-        TOTAL MES: {real_n}h Realizadas + {total_d_dic}h Debidas = {round(real_n + total_d_dic, 1)}h NORMALES<br>
-        EXTRAS: {real_e}h Brutas - {total_d_dic}h Debidas = {round(real_e - total_d_dic, 1)}h NETAS
+        TOTAL MES: {r_n}h Realizadas + {t_d_dic}h Debidas = {round(r_n + t_d_dic, 1)}h NORMALES<br>
+        EXTRAS: {r_e}h Brutas - {t_d_dic}h Debidas = {round(r_e - t_d_dic, 1)}h NETAS
     </div>""", unsafe_allow_html=True)
 
     if 'fichar' in st.session_state and not es_alex:
@@ -217,7 +226,4 @@ elif st.session_state.page == 'calendario':
             if st.form_submit_button("GUARDAR"):
                 supabase.table("fichajes").delete().eq("empleado_id", id_t).eq("fecha_dia", fd).execute()
                 supabase.table("fichajes").insert({"empleado_id": id_t, "fecha_dia": fd, "hora_entrada": en, "hora_salida": sa}).execute()
-                del st.session_state.fichar; st.rerun()
-            if st.form_submit_button("BORRAR"):
-                supabase.table("fichajes").delete().eq("empleado_id", id_t).eq("fecha_dia", fd).execute()
                 del st.session_state.fichar; st.rerun()
