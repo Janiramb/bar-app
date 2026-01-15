@@ -19,6 +19,7 @@ COLOR_JANI = "#FCD844"
 COLOR_IRIA = " #BC7AFA"
 
 # --- ESTILOS CSS ---
+# --- ESTILOS CSS ---
 st.markdown(f"""
     <style>
     .stApp {{ background-color: {COLOR_FONDO_BASE}; }}
@@ -26,8 +27,27 @@ st.markdown(f"""
     .stButton>button, div[data-testid="stFormSubmitButton"]>button {{ color: black !important; background-color: white !important; border: 2px solid #5D6D7E !important; font-weight: bold !important; }}
     .dia-caja {{ border: 1px solid #7FB3D5; padding: 10px; border-radius: 10px; text-align: center; min-height: 125px; background-color: white; color: black; }}
     .resumen-pie {{ background-color: white; padding: 20px; border-radius: 15px; border: 3px solid #5D6D7E; text-align: center; font-size: 20px; font-weight: bold; color: #2C3E50; }}
+    
     /* Estilos para Gestión Alex */
     .section-header {{ background-color: white; padding: 15px; border-radius: 10px; border-left: 10px solid #5D6D7E; margin-bottom: 20px; font-size: 24px; font-weight: bold; color: #2C3E50; }}
+
+    /* --- NUEVOS ESTILOS PARA TABS NEGROS Y GRANDES --- */
+    /* Pestaña seleccionada (activa) */
+    button[data-baseweb="tab"][aria-selected="true"] {{
+        color: black !important;
+        border-bottom-color: black !important;
+    }}
+
+    /* Texto de todas las pestañas más grande */
+    button[data-baseweb="tab"] p {{
+        font-size: 25px !important;
+        font-weight: bold !important;
+    }}
+
+    /* Color negro al pasar el ratón por encima */
+    button[data-baseweb="tab"]:hover {{
+        color: black !important;
+    }}
     </style>
     """, unsafe_allow_html=True)
 
@@ -240,4 +260,5 @@ elif st.session_state.page == 'calendario':
             if st.form_submit_button("BORRAR"):
                 supabase.table("fichajes").delete().eq("empleado_id", id_t).eq("fecha_dia", fd).execute()
                 del st.session_state.fichar; st.rerun()
+
 
