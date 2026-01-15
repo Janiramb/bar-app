@@ -26,6 +26,8 @@ st.markdown(f"""
     .stButton>button, div[data-testid="stFormSubmitButton"]>button {{ color: black !important; background-color: white !important; border: 2px solid #5D6D7E !important; font-weight: bold !important; }}
     .dia-caja {{ border: 1px solid #7FB3D5; padding: 10px; border-radius: 10px; text-align: center; min-height: 125px; background-color: white; color: black; }}
     .resumen-pie {{ background-color: white; padding: 20px; border-radius: 15px; border: 3px solid #5D6D7E; text-align: center; font-size: 20px; font-weight: bold; color: #2C3E50; }}
+    /* Estilos para Gestión Alex */
+    .section-header {{ background-color: white; padding: 15px; border-radius: 10px; border-left: 10px solid #5D6D7E; margin-bottom: 20px; font-size: 24px; font-weight: bold; color: #2C3E50; }}
     </style>
     """, unsafe_allow_html=True)
 
@@ -83,69 +85,79 @@ if st.session_state.page == 'inicio':
             st.session_state.page = 'calendario'; st.session_state.user = 'Iria'; st.session_state.emp_id = 3; st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
-# --- PANTALLA ALEX (GESTIÓN MEJORADA) ---
+# --- PANTALLA ALEX (GESTIÓN VISUAL GRANDE) ---
 elif st.session_state.page == 'menu_alex':
     st.markdown(f"<style>.stApp {{ background-color: {COLOR_ALEX}; }}</style>", unsafe_allow_html=True)
-    if st.button("◀ VOLVER"): st.session_state.page = 'inicio'; st.rerun()
-    st.title("⚙️ Gestión de Alex")
+    if st.button("◀ VOLVER AL INICIO"): st.session_state.page = 'inicio'; st.rerun()
+    st.title("⚙️ PANEL DE CONTROL - ALEX")
     
-    tab1, tab2, tab3 = st.tabs(["📅 Horarios Base Guardados", "🌟 Días Estrella Registrados", "👁️ Ver Calendarios"])
+    tab1, tab2, tab3 = st.tabs(["📅 HORARIOS BASE", "🌟 DÍAS ESTRELLA", "👁️ CALENDARIOS"])
     
     with tab1:
-        st.subheader("Configuración Actual de Horarios Base")
+        st.markdown('<div class="section-header">📋 Horarios Semanales Vigentes</div>', unsafe_allow_html=True)
         res_b = supabase.table("horarios_semanales").select("*").execute()
         df_base = pd.DataFrame(res_b.data) if res_b.data else pd.DataFrame()
         dias_n = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
         
         c1, c2 = st.columns(2)
-        for eid, col, nom in [(2, c1, "JANIRA"), (3, c2, "IRIA")]:
+        for eid, col, nom in [(2, c1, "👩‍🦰 JANIRA"), (3, c2, "👩‍🦳 IRIA")]:
             with col:
-                st.markdown(f"### {nom}")
+                st.subheader(nom)
                 if not df_base.empty:
                     temp_df = df_base[df_base['empleado_id'] == eid].copy()
                     if not temp_df.empty:
                         temp_df['Día'] = temp_df['dia_semana'].apply(lambda x: dias_n[int(x)])
-                        st.table(temp_df.sort_values('dia_semana')[['Día', 'hora_inicio']])
+                        # Mostrar tabla más grande y limpia
+                        st.table(temp_df.sort_values('dia_semana')[['Día', 'hora_inicio']].set_index('Día'))
                 
-                with st.expander(f"Editar Horario Base de {nom}"):
+                with st.expander(f"⚙️ ACTUALIZAR BASE DE {nom.split()[-1]}"):
                     with st.form(f"fb_{eid}"):
-                        hb = [st.number_input(f"{d}", value=5.0, step=0.5, key=f"b{eid}{i}") for i, d in enumerate(dias_n)]
+                        hb = [st.number_input(f"Horas {d}", value=5.0, step=0.5, key=f"b{eid}{i}") for i, d in enumerate(dias_n)]
                         if st.form_submit_button("GUARDAR NUEVO HORARIO"):
                             supabase.table("horarios_semanales").delete().eq("empleado_id", eid).execute()
                             for i, v in enumerate(hb): supabase.table("horarios_semanales").insert({"empleado_id": eid, "dia_semana": i, "hora_inicio": str(v)}).execute()
                             st.rerun()
 
     with tab2:
-        st.subheader("Listado de Días Estrella Registrados")
+        st.markdown('<div class="section-header">⭐ Listado de Estrellas Activas</div>', unsafe_allow_html=True)
         res_e = supabase.table("dias_especiales").select("*").execute()
         if res_e.data:
             df_e_list = pd.DataFrame(res_e.data)
             df_e_list['Empleado'] = df_e_list['empleado_id'].apply(lambda x: "Janira" if x == 2 else "Iria")
-            st.dataframe(df_e_list[['fecha', 'Empleado', 'horas_contrato']], use_container_width=True)
+            # Mostrar tabla grande con dataframe
+            st.dataframe(df_e_list[['fecha', 'Empleado', 'horas_contrato']].sort_values('fecha', ascending=False), use_container_width=True, height=300)
             
-            del_id = st.selectbox("Selecciona fecha para eliminar estrella", df_e_list['fecha'].unique())
-            if st.button("Eliminar Estrella Seleccionada"):
-                supabase.table("dias_especiales").delete().eq("fecha", del_id).execute()
-                st.rerun()
+            st.markdown("---")
+            c_del1, c_del2 = st.columns([2, 1])
+            with c_del1:
+                del_id = st.selectbox("Selecciona una fecha para ELIMINAR:", df_e_list['fecha'].unique())
+            with c_del2:
+                if st.button("🗑️ ELIMINAR SELECCIONADA", use_container_width=True):
+                    supabase.table("dias_especiales").delete().eq("fecha", del_id).execute()
+                    st.rerun()
         else:
-            st.write("No hay días estrella marcados.")
+            st.info("No hay días estrella registrados actualmente.")
 
-        st.markdown("---")
-        st.subheader("Añadir Nuevo Día Estrella ★")
+        st.markdown('<div class="section-header">➕ Registrar Nueva Estrella</div>', unsafe_allow_html=True)
         with st.form("fs_new"):
-            e_id = st.selectbox("Empleado", [2, 3], format_func=lambda x: "Janira" if x==2 else "Iria")
-            f_star = st.date_input("Fecha")
-            h_star = st.number_input("Contrato Estrella (horas)", value=6.0, step=0.5)
-            if st.form_submit_button("REGISTRAR ESTRELLA"):
+            c_new1, c_new2, c_new3 = st.columns(3)
+            with c_new1: e_id = st.selectbox("Para quién:", [2, 3], format_func=lambda x: "Janira" if x==2 else "Iria")
+            with c_new2: f_star = st.date_input("Qué día:")
+            with c_new3: h_star = st.number_input("Horas de contrato ese día:", value=6.0, step=0.5)
+            if st.form_submit_button("REGISTRAR DÍA ESTRELLA"):
                 supabase.table("dias_especiales").upsert({"empleado_id": e_id, "fecha": str(f_star), "horas_contrato": h_star}).execute()
+                st.success("¡Día estrella guardado!")
                 st.rerun()
 
     with tab3:
+        st.markdown('<div class="section-header">👁️ Acceso Rápido a Calendarios</div>', unsafe_allow_html=True)
+        st.markdown('<div class="big-button">', unsafe_allow_html=True)
         cv1, cv2 = st.columns(2)
-        if cv1.button("CALENDARIO JANIRA", use_container_width=True): st.session_state.page = 'calendario'; st.session_state.user = 'Alex'; st.session_state.emp_id = 2; st.rerun()
-        if cv2.button("CALENDARIO IRIA", use_container_width=True): st.session_state.page = 'calendario'; st.session_state.user = 'Alex'; st.session_state.emp_id = 3; st.rerun()
+        if cv1.button("📅 VER MES JANIRA", use_container_width=True): st.session_state.page = 'calendario'; st.session_state.user = 'Alex'; st.session_state.emp_id = 2; st.rerun()
+        if cv2.button("📅 VER MES IRIA", use_container_width=True): st.session_state.page = 'calendario'; st.session_state.user = 'Alex'; st.session_state.emp_id = 3; st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
 
-# --- PANTALLA CALENDARIO (MANTIENE LÓGICA DE TRASPASO DETALLADA) ---
+# --- PANTALLA CALENDARIO ---
 elif st.session_state.page == 'calendario':
     es_alex = (st.session_state.user == 'Alex')
     id_t = st.session_state.emp_id
@@ -161,7 +173,7 @@ elif st.session_state.page == 'calendario':
         if st.session_state.m > 12: st.session_state.m = 1; st.session_state.a += 1
         st.rerun()
     with c2: st.markdown(f"<h2 style='text-align:center;'>{calendar.month_name[st.session_state.m].upper()} {st.session_state.a}</h2>", unsafe_allow_html=True)
-    if st.button("🏠"): st.session_state.page = 'inicio'; st.rerun()
+    if st.button("🏠 MENU"): st.session_state.page = 'inicio'; st.rerun()
 
     f_ant = datetime(st.session_state.a, st.session_state.m, 1) - timedelta(days=1)
     r_ant = supabase.table("fichajes").select("*").eq("empleado_id", id_t).eq("fecha_dia", f_ant.strftime("%Y-%m-%d")).execute()
@@ -177,10 +189,8 @@ elif st.session_state.page == 'calendario':
 
     r_f = supabase.table("fichajes").select("*").eq("empleado_id", id_t).gte("fecha_dia", f"{st.session_state.a}-{st.session_state.m:02d}-01").lte("fecha_dia", f"{st.session_state.a}-{st.session_state.m:02d}-{calendar.monthrange(st.session_state.a, st.session_state.m)[1]}").execute()
     df_f = pd.DataFrame(r_f.data) if r_f.data else pd.DataFrame()
-    r_s = supabase.table("horarios_semanales").select("*").eq("empleado_id", id_t).execute()
-    base_h = {int(i['dia_semana']): float(i['hora_inicio']) for i in r_s.data}
-    r_e = supabase.table("dias_especiales").select("*").eq("empleado_id", id_t).execute()
-    df_e = pd.DataFrame(r_e.data) if r_e.data else pd.DataFrame()
+    base_h = {int(i['dia_semana']): float(i['hora_inicio']) for i in (supabase.table("horarios_semanales").select("*").eq("empleado_id", id_t).execute()).data}
+    df_e = pd.DataFrame((supabase.table("dias_especiales").select("*").eq("empleado_id", id_t).execute()).data)
 
     t_n_dic, t_e_dic, t_d_dic = 0.0, 0.0, 0.0
     cal = calendar.monthcalendar(st.session_state.a, st.session_state.m)
@@ -227,6 +237,6 @@ elif st.session_state.page == 'calendario':
                 supabase.table("fichajes").delete().eq("empleado_id", id_t).eq("fecha_dia", fd).execute()
                 supabase.table("fichajes").insert({"empleado_id": id_t, "fecha_dia": fd, "hora_entrada": en, "hora_salida": sa}).execute()
                 del st.session_state.fichar; st.rerun()
-
-
-
+            if st.form_submit_button("BORRAR"):
+                supabase.table("fichajes").delete().eq("empleado_id", id_t).eq("fecha_dia", fd).execute()
+                del st.session_state.fichar; st.rerun()
