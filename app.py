@@ -36,17 +36,33 @@ def calcular_tiempos_finales(h_ent, h_sal, h_con, es_ultimo_dia):
     try:
         t1 = datetime.strptime(h_ent, fmt)
         t2 = datetime.strptime(h_sal, fmt)
-        if t2 <= t1: t2 += timedelta(days=1)
+        
+        # Si la salida es menor que la entrada, es que pasó de medianoche
+        paso_medianoche = t2 <= t1
+        if paso_medianoche:
+            t2 += timedelta(days=1)
+        
         total_h = (t2 - t1).total_seconds() / 3600
-        h_traspaso = 0.0
-        if es_ultimo_dia:
-            h_traspaso = total_h
-            return 0.0, 0.0, 0.0, round(h_traspaso, 1)
+
+        if es_ultimo_dia and paso_medianoche:
+            # Calculamos cuánto cae antes de las 00:00 y cuánto después
+            medianoche = (t1 + timedelta(days=1)).replace(hour=0, minute=0)
+            h_este_mes = (medianoche - t1).total_seconds() / 3600
+            h_traspaso = total_h - h_este_mes
+            
+            # Para el resumen de este mes, solo usamos h_este_mes contra el contrato
+            n = min(h_este_mes, h_con)
+            e = max(0.0, h_este_mes - h_con)
+            d = max(0.0, h_con - h_este_mes)
+            return round(n, 1), round(e, 1), round(d, 1), round(h_traspaso, 1)
+        
+        # Lógica normal para días que no son fin de mes
         n = min(total_h, h_con)
         e = max(0.0, total_h - h_con)
         d = max(0.0, h_con - total_h)
         return round(n, 1), round(e, 1), round(d, 1), 0.0
-    except: return 0.0, 0.0, 0.0, 0.0
+    except:
+        return 0.0, 0.0, 0.0, 0.0
 
 # --- NAVEGACIÓN ---
 if 'page' not in st.session_state: st.session_state.page = 'inicio'
@@ -208,3 +224,4 @@ elif st.session_state.page == 'calendario':
             if c2.form_submit_button("🗑️ BORRAR"):
                 supabase.table("fichajes").delete().eq("empleado_id", id_t).eq("fecha_dia", f_dia).execute()
                 del st.session_state.fichar; st.rerun()
+
